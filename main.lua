@@ -482,7 +482,7 @@ enemy_logic = function(i)
 	local x, y, dx, dy
 	local e = enemies[i]
 	x, y, dx, dy = e.x, e.y, e.dx, e.dy
-	local c = cell_get(x, y)
+	local c = enemy_cell(i)
 	if (x % 2 ~= 0) or (y % 2) ~= 0 then -- odd
 		c = enemy_halflife(c)
 		cell_set(x - dx, y - dy, BEMPTY)
@@ -582,6 +582,18 @@ enemy_logic = function(i)
 	enemy_turn(x, y, c, best_w, e)
 end
 
+enemy_cell = function(i)
+	local e = enemies[i]
+	local x, y, dx, dy = e.x, e.y, e.dx, e.dy
+	if (x % 2) ~= 0 then
+		x = x - dx
+	end
+	if (y % 2) ~= 0 then
+		y = y - dy
+	end
+	return cell_get(x, y)
+end
+
 enemy = function()
 	if #enemies == 0 then
 		return
@@ -594,14 +606,7 @@ enemy = function()
 		end
 		e = enemies[i]
 		x, y, dx, dy = e.x, e.y, e.dx, e.dy
-		if (x % 2) ~= 0 then
-			x = x - dx
-		end
-		if (y % 2) ~= 0 then
-			y = y - dy
-		end
-		c = cell_get(x, y)
-		x, y = e.x, e.y
+		c = enemy_cell(i)
 		if c ~= BFLY and c ~= BHEART and c ~= 20 and c ~= 21 then
 			if (x % 2 ~= 0) or (y % 2) ~= 0 then
 				x = x + dx
