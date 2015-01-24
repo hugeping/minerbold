@@ -594,6 +594,13 @@ enemy = function()
 		end
 		e = enemies[i]
 		x, y, dx, dy = e.x, e.y, e.dx, e.dy
+		if (x % 2) ~= 0 then
+			x = x - dx
+		end
+		if (y % 2) ~= 0 then
+			y = y - dx
+		end
+		x, y = e.x, e.y
 		c = cell_get(x, y)
 		if c ~= BFLY and c ~= BHEART and c ~= 20 and c ~= 21 then
 			if (x % 2 ~= 0) or (y % 2) ~= 0 then
