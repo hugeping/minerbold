@@ -412,6 +412,9 @@ fall = function()
 	for y = 30,0,-2 do
 		x = 0
 		while x <= 30 do 
+			if level_out then
+				return
+			end
 			c = cell_get(x, y)
 			if c == BGOLD or c == BGOLD3 or c == BGOLD2 then
 				nr_gold = nr_gold + 1
@@ -457,6 +460,7 @@ fall = function()
 	if c ~= BHUMAN and c < 12 then
 		print ("dec lives"..c)
 		reset_level()
+		return
 	end
 	if nr_gold == 0 then
 		nr_level = nr_level + 1
