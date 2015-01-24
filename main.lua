@@ -1,7 +1,8 @@
 --$Name:Miner Bold$
 --$Version:0.1$
 instead_version "2.0.0"
-
+TIMER = 85
+FAST_TIMER = 30
 require "sprites"
 require "sound"
 require "timer"
@@ -62,6 +63,7 @@ end
 BEMPTY = 0
 BGRASS = 1
 BSTONE = 2
+BSTONE_LAZY = BSTONE + 128
 BGOLD = 3
 BHUMAN = 4
 BBLOCK = 5
@@ -164,6 +166,7 @@ reset_level = function()
 	sprite.copy(sprite.screen(), back_screen)
 	level_out = 0
 	load_map()
+	timer:set(FAST_TIMER)
 end
 
 game.timer = function(s)
@@ -174,6 +177,7 @@ game.timer = function(s)
 		render_map(sprite.screen(), level_in)
 		if level_in == 0 then
 			level_in = false
+			timer:set(TIMER)
 			return
 		end
 		level_in = level_in - 8
@@ -254,7 +258,7 @@ human_stone = function(x, y)
 		end
 		xx, yy = xx + player_movex * 2, yy + player_movey * 2
 	end
-	cell_set(xx, yy, BSTONE)
+	cell_set(xx, yy, BSTONE_LAZY)
 	cell_set(x, y, BEMPTY);
 	sprite_draw(x, y, BEMPTY);
 	sprite_draw(xx, yy, BSTONE);
@@ -412,7 +416,10 @@ fall = function()
 			if c == BGOLD or c == BGOLD3 or c == BGOLD2 then
 				nr_gold = nr_gold + 1
 			end
-			if c == BGOLD or c == BSTONE then
+			if c == BSTONE_LAZY then
+				c = BSTONE
+				cell_set(x, y, c)
+			elseif c == BGOLD or c == BSTONE then
 				x, y = fall1(x, y, c)
 			elseif c == BSTONE2 or c == BGOLD2 then
 				cell_set(x, y - 2, BEMPTY) 
@@ -457,7 +464,6 @@ fall = function()
 	end
 end
 
-global { fall_stage = false };
 enemy_halflife = function(c)
 	if c < 16 then
 		c = c + 14
@@ -631,17 +637,6 @@ enemy = function()
 	end
 end
 game_loop = function()
-	if fall_stage then
-		if fall_stage == true then
-			fall();
-			fall_stage = 1
-		else
-			enemy();
-			fall_stage = false
-		end
-		return
-	end
-	fall_stage = true
 	if (player_x % 2 == 0) and (player_y % 2 == 0)  then
 		player_movex, player_movey = 0, 0
 		if iskey 'up' then
@@ -678,6 +673,14 @@ game_loop = function()
 		cell_set(x, y, BHUMAN)
 		player_x, player_y = x, y
 	end
+	if level_out then
+		return
+	end
+	fall();
+	if level_out then
+		return
+	end
+	enemy();
 end
 
 init = function()
@@ -688,16 +691,20 @@ init = function()
 	load_map()
 	level_in = 512
 	sprite.fill(sprite.screen(), 'black');
-	timer:set(30)
+	timer:set(TIMER)
 end
 start = function()
 	if not level_in then
 		level_out = false
-		level_in = 512
-		load_map();
---		render_map(sprite.screen());
+--		level_in = 512
+		timer:set(TIMER)
+--		load_map();
+		render_map(sprite.screen());
 	elseif level_in == 512 then
+		timer:set(FAST_TIMER)
 		sound.play(sounds[SLEVELIN])
+	elseif level_in then
+		timer:set(FAST_TIMER)
 	end
 end
 
