@@ -13,7 +13,6 @@ sprites = {}
 sprites_small = {}
 
 history = {}
-nr_history = 0
 
 sounds = {}
 global {
@@ -210,7 +209,7 @@ game.kbd = function(s, down, key)
 	stead.table.insert(keys, 1, key)
 end
 
-global { level_in = false, level_out = false, level_select = false }
+global { level_in = false, level_out = false, level_select = false, title_mode = false }
 
 level_reset = function(win, notitle)
 	if win and not demo_mode then
@@ -222,7 +221,6 @@ level_reset = function(win, notitle)
 	local st = level_stat()
 	local bant
 	history = {}
-	nr_history = 0
 	if demo_mode then
 		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
 	elseif notitle then
@@ -332,7 +330,7 @@ demo_enter = function()
 			return
 		end
 	end
-	nr_level = 0
+	nr_level = l
 	level_load()
 	level_reset(false, true)
 	level_after = title_enter
@@ -999,7 +997,6 @@ history_load = function()
 		end
 		stead.table.insert(history, v)
 	end
-	nr_history = #history
 	f:close(p)
 end
 
@@ -1014,7 +1011,7 @@ history_store = function(n)
 end
 
 history_get = function()
-	if nr_history == 0 then
+	if #history == 0 then
 		return 0, 0
 	end
 	local v = stead.table.remove(history, 1)
@@ -1026,19 +1023,17 @@ history_get = function()
 end
 
 history_add = function(dx, dy)
-	if nr_history == 0 then
+	if #history == 0 then
 		stead.table.insert(history, {dx, dy, 1})
-		nr_history = nr_history + 1
 		return
 	end
-	local n = nr_history
+	local n = #history
 	local v = history[n]
 	if v[1] == dx and v[2] == dy then
 		v[3] = v[3] + 1
 		return
 	end
 	stead.table.insert(history, {dx, dy, 1})
-	nr_history = nr_history + 1
 	return
 end
 
@@ -1155,7 +1150,13 @@ title_enter = function()
 	sound.play(sounds[STRILL], 3)
 	level_after = false
 end
-
+orig_save = game.save
+game.save = function(s, ...)
+	if demo_mode then
+		return
+	end
+	return orig_save(s, ...)
+end
 init = function()
 	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd', 'escape');
 	load_sprites()
@@ -1166,7 +1167,7 @@ init = function()
 	level_select = true
 end
 start = function()
-	if not level_select then
+	if not level_select and not title_mode then
 		level_load()
 		level_movein()
 	else
