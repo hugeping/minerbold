@@ -1109,6 +1109,7 @@ title_enter = function()
 	title_mode = scr_h
 	timer:set(FAST_TIMER)
 	level_in, level_out, level_select = false, false, false
+	demo_mode = false
 --	sound.stop(-1)
 	sound.play(sounds[STRILL], 3)
 end
