@@ -7,13 +7,18 @@ require "sprites"
 require "sound"
 require "timer"
 require "kbd"
+require "prefs"
 
 sprites = {}
+sprites_small = {}
+
 sounds = {}
 global {
 	nr_level = 0;
 	map = {};
 };
+
+prefs.stat = {}
 
 SDIE = 1
 SFALL = 2
@@ -55,8 +60,11 @@ load_sprites = function()
 	}
 	for i=1, #files do 
 		local s = sprite.load("gfx/"..files[i])
+		if i <= 8 then
+			sprites_small[i] = s
+		end
 		sprites[i] = sprite.scale(s, 2.0, 2.0, false)
-		sprite.free(s)
+--		sprite.free(s)
 	end
 end
 
@@ -120,7 +128,7 @@ end
 scr_w = 512
 scr_h = 512
 
-render_map = function(where, offset)
+level_render = function(where, offset)
 	if not offset then offset = 0 end
 	local y
 	local x
@@ -138,10 +146,43 @@ render_map = function(where, offset)
 		end
 	end
 end
+level_map = function(where, ox, oy)
+	local y
+	local x
+	for y = 1,16 do
+		local yy = 16 * (y - 1)
+		local l = map[y]
+		for x = 1, 16 do
+			local c = l[x] + 1
+			sprite.copy(sprites_small[c], where, 16 * (x - 1) + ox, yy + oy)
+		end
+	end
+end
+
+map_render = function(nr, where)
+	local saved_level = nr_level
+	nr_level = nr
+	level_load(); level_map(where, 0, 0)
+	nr_level = nr_level + 1
+
+	level_load(); level_map(where, scr_w / 2, 0)
+	nr_level = nr_level + 1
+
+	level_load(); level_map(where, 0, scr_h / 2)
+	nr_level = nr_level + 1
+
+	level_load(); level_map(where, scr_w / 2, scr_h / 2)
+
+	nr_level = saved_level
+end
 
 keys = {}
 
 game.kbd = function(s, down, key)
+	if key == 'space' or key == 'return' then
+		key_return = down
+		return
+	end
 	if not down then
 		local k,v
 		local i
@@ -160,10 +201,10 @@ game.kbd = function(s, down, key)
 	stead.table.insert(keys, 1, key)
 end
 
-global { level_in = false, level_out = false }
+global { level_in = false, level_out = false, level_select = false }
 
 level_reset = function()
-	sprite.copy(sprite.screen(), back_screen)
+	sprite.copy(sprite.screen(), offscreen)
 	level_out = 0
 	level_load()
 	timer:set(FAST_TIMER)
@@ -172,6 +213,7 @@ end
 level_movein = function()
 	level_out = false
 	level_in = scr_h
+	level_select = false
 	sound.play(sounds[SLEVELIN])
 	timer:set(FAST_TIMER)
 end
@@ -179,14 +221,24 @@ end
 level_ready = function()
 	level_in = false
 	level_out = false
-	render_map(sprite.screen());
+	level_render(sprite.screen());
 	timer:set(TIMER)
 end
 
+level_choose = function()
+	level_select = true
+	level_in = false
+	level_out = false
+	level_load()
+	level_map(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2)
+	sprite.copy(offscreen, sprite.screen())
+	timer:set(FAST_TIMER / 2)
+end
+MAP_SPEED = 32
 game.timer = function(s)
 	if level_in then
 		if level_in < 0 then level_in = 0 end
-		render_map(sprite.screen(), level_in)
+		level_render(sprite.screen(), level_in)
 		if level_in == 0 then
 			level_ready()
 			return
@@ -194,16 +246,52 @@ game.timer = function(s)
 		level_in = level_in - 8
 		return
 	end
-
 	if level_out then
 		if level_out >= scr_h then level_out = scr_h end
 		sprite.fill(sprite.screen(), 0, level_out - 8, scr_h, level_out, 'black')
-		sprite.copy(back_screen, sprite.screen(), 0, level_out)
+		sprite.copy(offscreen, sprite.screen(), 0, level_out)
 		if level_out == scr_h then
 			level_movein()
 			return
 		end
 		level_out = level_out + 8
+		return
+	end
+	if level_select then
+		if level_select ~= true then -- scroll
+			sprite.copy(offscreen, sprite.screen(), level_select, 0)
+			if level_select < 0 then
+				sprite.fill(sprite.screen(), level_select + scr_w, 0, MAP_SPEED, scr_h, 'black')
+				level_map(sprite.screen(), scr_w + level_select, (scr_h - 256) / 2)
+				sprite.fill(sprite.screen(), scr_w + level_select + 256, 0, MAP_SPEED, scr_h, 'black')
+				level_select = level_select - MAP_SPEED
+			else
+				sprite.fill(sprite.screen(), level_select, 0, MAP_SPEED, scr_h, 'black')
+				level_map(sprite.screen(), level_select - 256, (scr_h - 256) / 2)
+				sprite.fill(sprite.screen(), level_select - 256 - MAP_SPEED, 0, MAP_SPEED, scr_h, 'black')
+				level_select = level_select + MAP_SPEED
+			end
+
+			if level_select < -384 or level_select > 400 then
+				level_choose()
+				level_select = true
+			end
+		end
+		if level_select == true then
+			if iskey 'right' and nr_level < nr_levels - 1 then
+				nr_level = nr_level + 1
+				level_select = -MAP_SPEED
+			elseif iskey 'left' and nr_level > 0 then
+				nr_level = nr_level - 1
+				level_select = MAP_SPEED
+			elseif isreturn() then
+				sprite.fill(sprite.screen(), 'black')
+				level_load()
+				level_movein()
+				return
+			end
+			level_load()
+		end
 		return
 	end
 	game_loop()
@@ -246,6 +334,13 @@ iskey = function(n)
 		return true
 	end
 end
+
+isreturn = function()
+	if key_return then
+		return true
+	end
+end
+
 human_stone = function(x, y)
 	local xx, yy, c 
 	xx, yy = x + player_movex * 2, y + player_movey * 2
@@ -692,15 +787,14 @@ game_loop = function()
 end
 
 init = function()
-	hook_keys('left', 'right', 'up', 'down');
+	hook_keys('left', 'right', 'up', 'down', 'space', 'return');
 	load_sprites()
 	load_sounds()
-	back_screen = sprite.blank(scr_w, scr_h)
+	offscreen = sprite.blank(scr_w, scr_h)
 	sprite.fill(sprite.screen(), 'black');
 end
 start = function()
-	level_load()
-	level_movein()
+	level_choose()
 end
 
 dofile "maps.lua"
