@@ -184,6 +184,7 @@ game.kbd = function(s, down, key)
 			key_esc = down
 			return true
 		end
+		key_esc = false
 	end
 
 	if key == 'd' then
@@ -211,7 +212,7 @@ end
 
 global { level_in = false, level_out = false, level_select = false }
 
-level_reset = function(win)
+level_reset = function(win, notitle)
 	if win and not demo_mode then
 		history_store(win)
 	end
@@ -224,6 +225,8 @@ level_reset = function(win)
 	nr_history = 0
 	if demo_mode then
 		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
+	elseif notitle then
+		bant = false
 	else
 		if win then
 			bant = sprite.text(fn2, stead.string.format(_("score:SCORE").." %d", nr_score), 'red', 1)
@@ -233,11 +236,17 @@ level_reset = function(win)
 	end
 	demo_mode = false
 	nr_score = 0;
-	local w, h = sprite.size(bant)
 	sprite.fill(banner, 'black')
-	sprite.draw(bant, banner, (scr_w - w) / 2, 0)
-	sprite.free(bant)
+	if bant then
+		local w, h = sprite.size(bant)
+		sprite.draw(bant, banner, (scr_w - w) / 2, 0)
+		sprite.free(bant)
+	end
 	timer:set(FAST_TIMER)
+	if level_after then
+		level_after()
+		level_after = false
+	end
 end
 
 level_movein = function()
@@ -308,8 +317,24 @@ level_choose = function()
 end
 MAP_SPEED = 32
 
+demo_enter = function()
+	nr_level = 0
+	level_load()
+	level_reset(false, true)
+	level_after = title_enter
+	history_load()
+	demo_mode = true
+	title_mode = false
+end
+
 game.timer = function(s)
 	if title_mode then
+		title_time = title_time + 1
+		if title_time > 300 then
+			title_time = 0
+			demo_enter()
+			return
+		end
 		if title_mode ~= true then
 			title_mode = title_mode - 32
 			if title_mode < 32 then title_mode = 32 end
@@ -458,8 +483,9 @@ end
 
 input.key = stead.hook(input.key, function(f, s, down, key, ...)
 	if not key:find("escape") and not key:find("shift")
-		and not key:find("ctrl") and
-		not key:find("unknown") then
+		and not key:find("ctrl")
+		and not key:find("alt")
+		and not key:find("unknown") then
 		key_any = down
 	end
 	return f(s, down, key, ...)
@@ -1106,12 +1132,14 @@ title_render = function(where, ox, oy)
 end
 
 title_enter = function()
+	title_time = 0
 	title_mode = scr_h
 	timer:set(FAST_TIMER)
 	level_in, level_out, level_select = false, false, false
 	demo_mode = false
 --	sound.stop(-1)
 	sound.play(sounds[STRILL], 3)
+	level_after = false
 end
 
 init = function()
