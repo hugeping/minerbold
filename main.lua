@@ -278,10 +278,10 @@ game.timer = function(s)
 			end
 		end
 		if level_select == true then
-			if iskey 'right' and nr_level < nr_levels - 1 then
+			if (iskey 'right' or iskey 'down') and nr_level < nr_levels - 1 then
 				nr_level = nr_level + 1
 				level_select = -MAP_SPEED
-			elseif iskey 'left' and nr_level > 0 then
+			elseif (iskey 'left' or iskey 'up') and nr_level > 0 then
 				nr_level = nr_level - 1
 				level_select = MAP_SPEED
 			elseif isreturn() then
