@@ -692,7 +692,9 @@ fall = function()
 			end
 		end
 		if nr_level == nr_levels then
-			print "game over"
+			-- todo game over
+			nr_level = 0
+			level_reset(l)
 		else
 			level_reset(l)
 		end
