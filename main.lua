@@ -873,18 +873,30 @@ enemy = function()
 end
 
 history_check = function(nr)
-	local p = instead_savepath().."/demo"..tostring(nr)
+	local p = instead_savepath().."/demo"..tostring(nr + 1)
 	local f = io.open(p, "r")
 	if not f then
-		return
+		p = instead_gamepath().."/demo"..tostring(nr + 1)
+		f = io.open(p, "r")
+	end
+	if not f then
+		return false
 	end
 	f:close()
 	return true
 end
 
 history_load = function()
-	local p = instead_savepath().."/demo"..tostring(nr_level)
+	local p = instead_savepath().."/demo"..tostring(nr_level + 1)
 	local f = io.open(p, "r")
+	if not f then
+		p = instead_gamepath().."/demo"..tostring(nr_level + 1)
+		f = io.open(p, "r")
+	end
+	if not f then
+		history = {}
+		return
+	end
 	local l
 	history = {}
 	for l in f:lines() do
