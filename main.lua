@@ -102,6 +102,7 @@ global {
 
 level_load = function()
 	enemies = {};
+	history = {}
 	scatter_dir = -1
 
 	local char2map = {
@@ -301,12 +302,12 @@ level_choose = function()
 		sprite.draw(lev, offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 + 256 + h / 2);
 		sprite.free(lev)
 
-		lev = sprite.text(fn, stead.string.format(_("score:SCORE")..":%d", st.score), 'red', 1)
+		lev = sprite.text(fn, stead.string.format(_("score:SCORE").." %d", st.score), 'red', 1)
 		local w, h = sprite.size(lev)
 		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w), (scr_h - 256) / 2 + 256 + h / 2);
 		sprite.free(lev)
 	elseif st.die > 0 then
-		lev = sprite.text(fn, stead.string.format(_("tries:ПОПЫТОК")..": %d", st.die), 'red', 1)
+		lev = sprite.text(fn, stead.string.format(_("tries:ПОПЫТОК").." %d", st.die), 'red', 1)
 		local w, h = sprite.size(lev)
 		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 + 256 + h / 2);
 		sprite.free(lev)
@@ -416,16 +417,25 @@ game.timer = function(s)
 		if level_select == true then
 			if (is_key 'right' or is_key 'down') and nr_level < nr_levels - 1 then
 				nr_level = nr_level + 1
+				selected_level = nr_level
 				level_select = -MAP_SPEED
 			elseif (is_key 'left' or is_key 'up') and nr_level > 0 then
 				nr_level = nr_level - 1
+				selected_level = nr_level
 				level_select = MAP_SPEED
 			elseif is_return() then
 				selected_level = nr_level
 				sprite.fill(sprite.screen(), 'black')
 				level_load()
-				history = {}
 				level_movein()
+				return
+			elseif is_demo() and history_check(nr_level) then
+				sprite.fill(sprite.screen(), 'black')
+				level_load()
+				history_load()
+				level_movein()
+				level_after = level_choose
+				demo_mode = true
 				return
 			end
 			level_load()
@@ -1011,7 +1021,10 @@ end
 
 history_get = function()
 	if #history == 0 then
+		level_load()
+		level_reset()
 		return 0, 0
+--		return 0, 0
 	end
 	local v = stead.table.remove(history, 1)
 	v[3] = v[3] - 1
@@ -1092,11 +1105,11 @@ game_loop = function()
 		cell_set(x, y, BHUMAN)
 		player_x, player_y = x, y
 	end
-	if level_out or title_mode then
+	if level_out or title_mode or level_select then
 		return
 	end
 	fall();
-	if level_out or title_mode then
+	if level_out or title_mode or level_select then
 		return
 	end
 	enemy();
