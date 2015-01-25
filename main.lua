@@ -424,6 +424,7 @@ game.timer = function(s)
 				selected_level = nr_level
 				sprite.fill(sprite.screen(), 'black')
 				level_load()
+				history = {}
 				level_movein()
 				return
 			end
