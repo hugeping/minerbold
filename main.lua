@@ -180,7 +180,7 @@ game.kbd = function(s, down, key)
 	end
 
 	if key == 'escape' or key == 'backspace' then
-		if not title_mode and not level_select then
+		if not title_mode then
 			key_esc = down
 			return true
 		end
@@ -318,6 +318,20 @@ end
 MAP_SPEED = 32
 
 demo_enter = function()
+	local l = rnd(nr_levels) - 1
+	local k = l
+	while true do
+		if history_check(l) then
+			break
+		end
+		l = l + 1
+		if l == nr_levels then
+			l = 0
+		end
+		if k == l then
+			return
+		end
+	end
 	nr_level = 0
 	level_load()
 	level_reset(false, true)
