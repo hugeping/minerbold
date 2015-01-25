@@ -17,6 +17,7 @@ history = {}
 sounds = {}
 global {
 	nr_level = 0;
+	selected_level = 0;
 	nr_score = 0;
 	map = {};
 	prefs = { }
@@ -360,6 +361,7 @@ game.timer = function(s)
 		if title_mode == true and is_anykey() then
 			keys = {}
 			title_mode = false
+			nr_level = selected_level
 			level_choose()
 			sound.play(sounds[SPHASER], 3)
 			return
@@ -425,6 +427,7 @@ game.timer = function(s)
 				nr_level = nr_level - 1
 				level_select = MAP_SPEED
 			elseif is_return() then
+				selected_level = nr_level
 				sprite.fill(sprite.screen(), 'black')
 				level_load()
 				level_movein()
