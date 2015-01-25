@@ -405,6 +405,15 @@ is_return = function()
 	end
 end
 
+is_anykey = function()
+	return key_any
+end
+
+input.key = stead.hook(input.key, function(f, s, down, key, ...)
+	key_any = down
+	return f(s, down, key, ...)
+end)
+
 is_demo = function()
 	if key_demo then
 		return true
@@ -919,20 +928,22 @@ history_add = function(dx, dy)
 end
 
 game_loop = function()
-	if is_demo() then
+
+	if is_demo() and not demo_mode then
 		demo_mode = not demo_mode
-		if demo_mode then
-			level_load()
-			level_reset()
-			history_load()
-			demo_mode = true
-			return
-		else
-			level_load()
-			level_reset()
-			return
-		end
+		level_load()
+		level_reset()
+		history_load()
+		demo_mode = true
+		return
 	end
+
+	if demo_mode and is_anykey() then
+		level_load()
+		level_reset()
+		return
+	end
+
 	if (player_x % 2 == 0) and (player_y % 2 == 0)  then
 		player_movex, player_movey = 0, 0
 		if is_key 'up' then
