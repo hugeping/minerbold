@@ -7,7 +7,7 @@ require "sprites"
 require "sound"
 require "timer"
 require "kbd"
-require "prefs"
+-- require "prefs"
 
 sprites = {}
 sprites_small = {}
@@ -20,6 +20,7 @@ global {
 	nr_level = 0;
 	nr_score = 0;
 	map = {};
+	prefs = { }
 };
 
 prefs.stat = {}
@@ -28,12 +29,16 @@ SDIE = 1
 SFALL = 2
 SCLICK = 3
 SLEVELIN = 4
+STRILL = 5
+SPHASER = 6
 
 load_sounds = function()
 	sounds[SDIE] = sound.load "snd/explode.ogg"
 	sounds[SFALL] = sound.load "snd/fall.ogg"
 	sounds[SCLICK] = sound.load "snd/click.ogg"
 	sounds[SLEVELIN] = sound.load "snd/levelin.ogg"
+	sounds[STRILL] = sound.load "snd/trill.ogg"
+	sounds[SPHASER] = sound.load "snd/phaser.ogg"
 end
 
 load_sprites = function()
@@ -174,6 +179,13 @@ game.kbd = function(s, down, key)
 		return
 	end
 
+	if key == 'escape' or key == 'backspace' then
+		if not title_mode and not level_select then
+			key_esc = down
+			return true
+		end
+	end
+
 	if key == 'd' then
 		key_demo = down
 		return
@@ -246,7 +258,7 @@ level_movein = function()
 	sprite.free(bant)
 
 	level_in = scr_h + h
-	sound.play(sounds[SLEVELIN])
+	sound.play(sounds[SLEVELIN], 3)
 	timer:set(FAST_TIMER)
 end
 
@@ -263,6 +275,7 @@ level_choose = function()
 	level_out = false
 	level_load()
 
+	sprite.fill(offscreen, 'black')
 	level_map(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2)
 
 	local st = level_stat()
@@ -294,7 +307,33 @@ level_choose = function()
 	timer:set(FAST_TIMER / 2)
 end
 MAP_SPEED = 32
+
 game.timer = function(s)
+	if title_mode then
+		if title_mode ~= true then
+			title_mode = title_mode - 32
+			if title_mode < 32 then title_mode = 32 end
+			title_render(sprite.screen(), 0, title_mode);
+			sprite.fill(sprite.screen(), 0, title_mode + #title * 16, 512, 32, 'black');
+			sprite.fill(sprite.screen(), 0, title_mode - 32, 512, 32, 'black');
+		end
+		if title_mode == 32 then
+			title_mode = true
+		end 
+		if title_mode == true and is_anykey() then
+			keys = {}
+			title_mode = false
+			level_choose()
+			sound.play(sounds[SPHASER], 3)
+			return
+		end
+		return
+	end
+
+	if is_esc() then
+		title_enter()
+		return
+	end
 	if level_in then
 		local bw,bh = sprite.size(banner)
 		if level_in < 0 then level_in = 0 end
@@ -400,17 +439,29 @@ is_key = function(n)
 end
 
 is_return = function()
-	if key_return then
-		return true
-	end
+	return key_return
+end
+
+is_esc = function()
+	return key_esc
 end
 
 is_anykey = function()
-	return key_any
+	local c = key_any
+	key_any = false
+	if c then
+		key_return = false
+		key_esc = false
+	end
+	return c
 end
 
 input.key = stead.hook(input.key, function(f, s, down, key, ...)
-	key_any = down
+	if not key:find("escape") and not key:find("shift")
+		and not key:find("ctrl") and
+		not key:find("unknown") then
+		key_any = down
+	end
 	return f(s, down, key, ...)
 end)
 
@@ -479,7 +530,7 @@ end
 human_death = function(x, y)
 	explode(x, y)
 	level_stat().die = level_stat().die + 1
-	prefs:store()
+--	prefs:store()
 end
 
 game_dispatch = function(c, x, y)
@@ -584,7 +635,7 @@ explode = function(x, y)
 	local c = cell_get(player_x, player_y)
 	if c ~= BHUMAN and c < 12 then
 		level_stat().die = level_stat().die + 1
-		prefs:store()
+--		prefs:store()
 		level_reset()
 	end
 	return xe, ye
@@ -662,7 +713,7 @@ fall = function()
 	if c ~= BHUMAN and c < 12 then
 --		print ("dec lives"..c)
 		level_stat().die = level_stat().die + 1
-		prefs:store()
+--		prefs:store()
 		level_reset()
 		return
 	end
@@ -676,7 +727,7 @@ fall = function()
 		if level_stat().score < nr_score then
 			level_stat().score = nr_score
 		end
-		prefs:store()
+--		prefs:store()
 		local l = nr_level
 		nr_level = nr_level + 1
 		if nr_level == nr_levels then
@@ -1016,9 +1067,54 @@ game_loop = function()
 	end
 	enemy();
 end
+title = {
+"     :   : ::: :  : ::: ::      ",
+"     :: ::  :  :: : :   : :     ",
+"     : : :  :  : :: ::  ::      ",
+"     :   :  :  :  : :   : :     ",
+"     :   : ::: :  : ::: : :     ",
+"                                ",
+"     ####   ###  ##   ####      ",
+"     ## ## ## ## ##   ## ##     ",
+"     ####  ## ## ##   ## ##     ",
+"     ## ## ## ## ##   ## ##     ",
+"     ####   ###  #### ####      ",
+};
+
+title_render = function(where, ox, oy)
+	local char2map = {
+		[' '] = 0,
+		[':'] = 1,
+		['@'] = 2,
+		['$'] = 3,
+		['+'] = 4,
+		['#'] = 5,
+		['&'] = 6,
+		['%'] = 7,
+	}
+	local x
+	local y
+	for y = 1, #title do
+		for x = 1, 32 do
+			local c = string.sub(title[y], x, x);
+			c = char2map[c]
+			sprite.copy(sprites_small[c + 1], where, 
+				ox + (x - 1) * 16, oy + (y - 1) * 16);
+		end
+	end
+ 
+end
+
+title_enter = function()
+	title_mode = scr_h
+	timer:set(FAST_TIMER)
+	level_in, level_out, level_select = false, false, false
+--	sound.stop(-1)
+	sound.play(sounds[STRILL], 3)
+end
 
 init = function()
-	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd');
+	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd', 'escape');
 	load_sprites()
 	load_sounds()
 	offscreen = sprite.blank(scr_w, scr_h)
@@ -1031,7 +1127,7 @@ start = function()
 		level_load()
 		level_movein()
 	else
-		level_choose()
+		title_enter()
 	end
 end
 dofile "i18n.lua"
