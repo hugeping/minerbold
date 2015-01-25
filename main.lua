@@ -81,7 +81,7 @@ global {
 	enemies = {};
 }
 
-load_map = function()
+level_load = function()
 	enemies = {};
 	scatter_dir = -1
 
@@ -126,7 +126,7 @@ render_map = function(where, offset)
 	local x
 	for y = 1,16 do
 		local yy = 32 * (y - 1) + offset
-		if yy >= 512 then
+		if yy >= scr_h then
 			return
 		end
 		if yy >= 0 then
@@ -162,22 +162,33 @@ end
 
 global { level_in = false, level_out = false }
 
-reset_level = function()
+level_reset = function()
 	sprite.copy(sprite.screen(), back_screen)
 	level_out = 0
-	load_map()
+	level_load()
 	timer:set(FAST_TIMER)
+end
+
+level_movein = function()
+	level_out = false
+	level_in = scr_h
+	sound.play(sounds[SLEVELIN])
+	timer:set(FAST_TIMER)
+end
+
+level_ready = function()
+	level_in = false
+	level_out = false
+	render_map(sprite.screen());
+	timer:set(TIMER)
 end
 
 game.timer = function(s)
 	if level_in then
-		if level_in < 0 then
-			level_in = 0
-		end
+		if level_in < 0 then level_in = 0 end
 		render_map(sprite.screen(), level_in)
 		if level_in == 0 then
-			level_in = false
-			timer:set(TIMER)
+			level_ready()
 			return
 		end
 		level_in = level_in - 8
@@ -185,23 +196,16 @@ game.timer = function(s)
 	end
 
 	if level_out then
-		if level_out >= 512 then
-			level_out = 512
-		end
-		sprite.fill(sprite.screen(), 0, level_out - 8, 512, level_out, 'black')
+		if level_out >= scr_h then level_out = scr_h end
+		sprite.fill(sprite.screen(), 0, level_out - 8, scr_h, level_out, 'black')
 		sprite.copy(back_screen, sprite.screen(), 0, level_out)
-		if level_out == 512 then
-			level_out = false
-			level_in = 512
-			sound.play(sounds[SLEVELIN])
---			nr_level = nr_level + 1
---			load_map()
+		if level_out == scr_h then
+			level_movein()
 			return
 		end
 		level_out = level_out + 8
 		return
 	end
-
 	game_loop()
 end
 
@@ -402,7 +406,7 @@ explode = function(x, y)
 	sound.play(sounds[SDIE])
 	local c = cell_get(player_x, player_y)
 	if c ~= BHUMAN and c < 12 then
-		reset_level()
+		level_reset()
 	end
 	return xe, ye
 end
@@ -458,13 +462,13 @@ fall = function()
 -- 	check if dead
 	c = cell_get(player_x, player_y)
 	if c ~= BHUMAN and c < 12 then
-		print ("dec lives"..c)
-		reset_level()
+--		print ("dec lives"..c)
+		level_reset()
 		return
 	end
 	if nr_gold == 0 then
 		nr_level = nr_level + 1
-		reset_level()
+		level_reset()
 	end
 end
 
@@ -691,25 +695,12 @@ init = function()
 	hook_keys('left', 'right', 'up', 'down');
 	load_sprites()
 	load_sounds()
-	back_screen = sprite.blank(512, 512)
-	load_map()
-	level_in = 512
+	back_screen = sprite.blank(scr_w, scr_h)
 	sprite.fill(sprite.screen(), 'black');
-	timer:set(TIMER)
 end
 start = function()
-	if not level_in then
-		level_out = false
---		level_in = 512
-		timer:set(TIMER)
---		load_map();
-		render_map(sprite.screen());
-	elseif level_in == 512 then
-		timer:set(FAST_TIMER)
-		sound.play(sounds[SLEVELIN])
-	elseif level_in then
-		timer:set(FAST_TIMER)
-	end
+	level_load()
+	level_movein()
 end
 
 dofile "maps.lua"
