@@ -881,9 +881,14 @@ init = function()
 	offscreen = sprite.blank(scr_w, scr_h)
 	banner = sprite.blank(scr_w, 32)
 	sprite.fill(sprite.screen(), 'black');
+	level_select = true
 end
 start = function()
-	level_choose()
+	if not level_select then
+		level_movein()
+	else
+		level_choose()
+	end
 end
 dofile "i18n.lua"
 dofile "maps.lua"
