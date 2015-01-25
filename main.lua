@@ -324,7 +324,7 @@ game.timer = function(s)
 			elseif (iskey 'left' or iskey 'up') and nr_level > 0 then
 				nr_level = nr_level - 1
 				level_select = MAP_SPEED
-			elseif isreturn() then
+			elseif is_return() then
 				sprite.fill(sprite.screen(), 'black')
 				level_load()
 				level_movein()
@@ -375,7 +375,7 @@ iskey = function(n)
 	end
 end
 
-isreturn = function()
+is_return = function()
 	if key_return then
 		return true
 	end
@@ -627,7 +627,7 @@ fall = function()
 		level_reset()
 		return
 	end
-	if nr_gold == 0 then
+	if nr_gold == 0 then -- or is_return() then
 		-- completed
 		level_stat().completed = level_stat().completed + 1
 		if level_stat().score < nr_score then
@@ -635,7 +635,23 @@ fall = function()
 		end
 		prefs:store()
 		nr_level = nr_level + 1
-		level_reset(true)
+		if nr_level == nr_levels then
+			-- lookup first undone
+			local i
+			for i=0,nr_levels - 1 do
+				if not prefs.stat[i] or 
+				    not prefs.stat[i].completed or 
+				    prefs.stat[i].completed == 0 then
+					nr_level = i
+					break
+				end
+			end
+		end
+		if nr_level == nr_levels then
+			print "game over"
+		else
+			level_reset(true)
+		end
 	end
 end
 
