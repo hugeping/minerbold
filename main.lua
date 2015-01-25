@@ -12,6 +12,9 @@ require "prefs"
 sprites = {}
 sprites_small = {}
 
+history = {}
+nr_history = 0
+
 sounds = {}
 global {
 	nr_level = 0;
@@ -165,10 +168,17 @@ end
 keys = {}
 
 game.kbd = function(s, down, key)
+
 	if key == 'space' or key == 'return' then
 		key_return = down
 		return
 	end
+
+	if key == 'd' then
+		key_demo = down
+		return
+	end
+
 	if not down then
 		local k,v
 		local i
@@ -190,16 +200,26 @@ end
 global { level_in = false, level_out = false, level_select = false }
 
 level_reset = function(win)
+	if win and not demo_mode then
+		history_store(win)
+	end
 	sprite.copy(sprite.screen(), offscreen)
 	level_out = 0
 	level_load()
 	local st = level_stat()
 	local bant
-	if win then
-		bant = sprite.text(fn2, stead.string.format(_("score:SCORE").." %d", nr_score), 'red', 1)
+	history = {}
+	nr_history = 0
+	if demo_mode then
+		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
 	else
-		bant = sprite.text(fn2, stead.string.format(_("tries:TRIES").." %d", st.die), 'red', 1)
+		if win then
+			bant = sprite.text(fn2, stead.string.format(_("score:SCORE").." %d", nr_score), 'red', 1)
+		else
+			bant = sprite.text(fn2, stead.string.format(_("tries:TRIES").." %d", st.die), 'red', 1)
+		end
 	end
+	demo_mode = false
 	nr_score = 0;
 	local w, h = sprite.size(bant)
 	sprite.fill(banner, 'black')
@@ -215,7 +235,11 @@ level_movein = function()
 
 	local st = level_stat()
 	local bant
-	bant = sprite.text(fn2, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
+	if not demo_mode then
+		bant = sprite.text(fn2, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
+	else
+		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
+	end
 	local w, h = sprite.size(bant)
 	sprite.fill(banner, 'black')
 	sprite.draw(bant, banner, (scr_w - w) / 2, 0)
@@ -318,10 +342,10 @@ game.timer = function(s)
 			end
 		end
 		if level_select == true then
-			if (iskey 'right' or iskey 'down') and nr_level < nr_levels - 1 then
+			if (is_key 'right' or is_key 'down') and nr_level < nr_levels - 1 then
 				nr_level = nr_level + 1
 				level_select = -MAP_SPEED
-			elseif (iskey 'left' or iskey 'up') and nr_level > 0 then
+			elseif (is_key 'left' or is_key 'up') and nr_level > 0 then
 				nr_level = nr_level - 1
 				level_select = MAP_SPEED
 			elseif is_return() then
@@ -369,7 +393,7 @@ global {
 	player_movey = 0;
 }
 
-iskey = function(n)
+is_key = function(n)
 	if keys[1] == n then
 		return true
 	end
@@ -377,6 +401,12 @@ end
 
 is_return = function()
 	if key_return then
+		return true
+	end
+end
+
+is_demo = function()
+	if key_demo then
 		return true
 	end
 end
@@ -629,11 +659,16 @@ fall = function()
 	end
 	if nr_gold == 0 then -- or is_return() then
 		-- completed
+		if demo_mode then
+			level_reset()
+			return
+		end
 		level_stat().completed = level_stat().completed + 1
 		if level_stat().score < nr_score then
 			level_stat().score = nr_score
 		end
 		prefs:store()
+		local l = nr_level
 		nr_level = nr_level + 1
 		if nr_level == nr_levels then
 			-- lookup first undone
@@ -650,7 +685,7 @@ fall = function()
 		if nr_level == nr_levels then
 			print "game over"
 		else
-			level_reset(true)
+			level_reset(l)
 		end
 	end
 end
@@ -827,17 +862,92 @@ enemy = function()
 		return human_death(player_x, player_y)
 	end
 end
+
+history_load = function()
+	local p = instead_savepath().."/demo"..tostring(nr_level)
+	local f = io.open(p, "r")
+	local l
+	history = {}
+	for l in f:lines() do
+		local v = {}
+		for a in l:gmatch("[0-9-]+") do
+			stead.table.insert(v, tonumber(a))
+		end
+		stead.table.insert(history, v)
+	end
+	nr_history = #history
+	f:close(p)
+end
+
+history_store = function(n)
+	local p = instead_savepath().."/demo"..tostring(n)
+	local f = io.open(p, "w")
+	local k,v
+	for k,v in ipairs(history) do
+		f:write(stead.string.format("%d %d %d\n", v[1], v[2], v[3]))
+	end
+	f:close(p)
+end
+
+history_get = function()
+	if nr_history == 0 then
+		return 0, 0
+	end
+	local v = stead.table.remove(history, 1)
+	v[3] = v[3] - 1
+	if v[3] > 0 then
+		stead.table.insert(history, 1, v)
+	end
+	return v[1], v[2]
+end
+
+history_add = function(dx, dy)
+	if nr_history == 0 then
+		stead.table.insert(history, {dx, dy, 1})
+		nr_history = nr_history + 1
+		return
+	end
+	local n = nr_history
+	local v = history[n]
+	if v[1] == dx and v[2] == dy then
+		v[3] = v[3] + 1
+		return
+	end
+	stead.table.insert(history, {dx, dy, 1})
+	nr_history = nr_history + 1
+	return
+end
+
 game_loop = function()
+	if is_demo() then
+		demo_mode = not demo_mode
+		if demo_mode then
+			level_load()
+			level_reset()
+			history_load()
+			demo_mode = true
+			return
+		else
+			level_load()
+			level_reset()
+			return
+		end
+	end
 	if (player_x % 2 == 0) and (player_y % 2 == 0)  then
 		player_movex, player_movey = 0, 0
-		if iskey 'up' then
+		if is_key 'up' then
 			player_movey = -1
-		elseif iskey 'down' then
+		elseif is_key 'down' then
 			player_movey = 1
-		elseif iskey 'left' then
+		elseif is_key 'left' then
 			player_movex = -1
-		elseif iskey 'right' then
+		elseif is_key 'right' then
 			player_movex = 1
+		end
+		if demo_mode then
+			player_movex, player_movey = history_get()
+		else
+			history_add(player_movex, player_movey)
 		end
 		if player_movex ~= 0 or player_movey ~= 0 then
 			local x, y = player_x + player_movex * 2, player_y + player_movey * 2
@@ -875,7 +985,7 @@ game_loop = function()
 end
 
 init = function()
-	hook_keys('left', 'right', 'up', 'down', 'space', 'return');
+	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd');
 	load_sprites()
 	load_sounds()
 	offscreen = sprite.blank(scr_w, scr_h)
@@ -885,6 +995,7 @@ init = function()
 end
 start = function()
 	if not level_select then
+		level_load()
 		level_movein()
 	else
 		level_choose()
