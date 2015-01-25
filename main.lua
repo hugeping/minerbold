@@ -872,6 +872,16 @@ enemy = function()
 	end
 end
 
+history_check = function(nr)
+	local p = instead_savepath().."/demo"..tostring(nr)
+	local f = io.open(p, "r")
+	if not f then
+		return
+	end
+	f:close()
+	return true
+end
+
 history_load = function()
 	local p = instead_savepath().."/demo"..tostring(nr_level)
 	local f = io.open(p, "r")
@@ -928,9 +938,7 @@ history_add = function(dx, dy)
 end
 
 game_loop = function()
-
-	if is_demo() and not demo_mode then
-		demo_mode = not demo_mode
+	if is_demo() and not demo_mode and history_check(nr_level) then
 		level_load()
 		level_reset()
 		history_load()
