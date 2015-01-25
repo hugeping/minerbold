@@ -913,7 +913,7 @@ history_load = function()
 end
 
 history_store = function(n)
-	local p = instead_savepath().."/demo"..tostring(n)
+	local p = instead_savepath().."/demo"..tostring(n + 1)
 	local f = io.open(p, "w")
 	local k,v
 	for k,v in ipairs(history) do
