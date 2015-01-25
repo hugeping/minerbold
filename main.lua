@@ -317,21 +317,15 @@ end
 MAP_SPEED = 32
 
 demo_enter = function()
-	local l = rnd(nr_levels) - 1
-	local k = l
-	while true do
+	local l
+	local ll = {}
+	for l = 0, nr_levels -1 do
 		if history_check(l) then
-			break
-		end
-		l = l + 1
-		if l == nr_levels then
-			l = 0
-		end
-		if k == l then
-			return
+			stead.table.insert(ll, l)
 		end
 	end
-	nr_level = l
+	if #ll == 0 then return end
+	nr_level = ll[rnd(#ll)]
 	level_load()
 	level_reset(false, true)
 	level_after = title_enter
@@ -771,6 +765,7 @@ fall = function()
 --		prefs:store()
 		local l = nr_level
 		nr_level = nr_level + 1
+		selected_level = nr_level
 		if nr_level == nr_levels then
 			-- lookup first undone
 			local i
