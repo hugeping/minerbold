@@ -1092,11 +1092,11 @@ game_loop = function()
 		cell_set(x, y, BHUMAN)
 		player_x, player_y = x, y
 	end
-	if level_out then
+	if level_out or title_mode then
 		return
 	end
 	fall();
-	if level_out then
+	if level_out or title_mode then
 		return
 	end
 	enemy();
