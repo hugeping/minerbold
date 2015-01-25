@@ -15,6 +15,7 @@ sprites_small = {}
 sounds = {}
 global {
 	nr_level = 0;
+	nr_score = 0;
 	map = {};
 };
 
@@ -66,6 +67,8 @@ load_sprites = function()
 		sprites[i] = sprite.scale(s, 2.0, 2.0, false)
 --		sprite.free(s)
 	end
+	fn = sprite.font("gfx/font.ttf", 16);
+	fn2 = sprite.font("gfx/font.ttf", 26);
 end
 
 BEMPTY = 0
@@ -159,23 +162,6 @@ level_map = function(where, ox, oy)
 	end
 end
 
-map_render = function(nr, where)
-	local saved_level = nr_level
-	nr_level = nr
-	level_load(); level_map(where, 0, 0)
-	nr_level = nr_level + 1
-
-	level_load(); level_map(where, scr_w / 2, 0)
-	nr_level = nr_level + 1
-
-	level_load(); level_map(where, 0, scr_h / 2)
-	nr_level = nr_level + 1
-
-	level_load(); level_map(where, scr_w / 2, scr_h / 2)
-
-	nr_level = saved_level
-end
-
 keys = {}
 
 game.kbd = function(s, down, key)
@@ -203,17 +189,39 @@ end
 
 global { level_in = false, level_out = false, level_select = false }
 
-level_reset = function()
+level_reset = function(win)
 	sprite.copy(sprite.screen(), offscreen)
 	level_out = 0
 	level_load()
+	local st = level_stat()
+	local bant
+	if win then
+		bant = sprite.text(fn2, stead.string.format(_("score:SCORE").." %d", nr_score), 'red', 1)
+	else
+		bant = sprite.text(fn2, stead.string.format(_("tries:TRIES").." %d", st.die), 'red', 1)
+	end
+	nr_score = 0;
+	local w, h = sprite.size(bant)
+	sprite.fill(banner, 'black')
+	sprite.draw(bant, banner, (scr_w - w) / 2, 0)
+	sprite.free(bant)
 	timer:set(FAST_TIMER)
 end
 
 level_movein = function()
 	level_out = false
-	level_in = scr_h
 	level_select = false
+
+
+	local st = level_stat()
+	local bant
+	bant = sprite.text(fn2, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
+	local w, h = sprite.size(bant)
+	sprite.fill(banner, 'black')
+	sprite.draw(bant, banner, (scr_w - w) / 2, 0)
+	sprite.free(bant)
+
+	level_in = scr_h + h
 	sound.play(sounds[SLEVELIN])
 	timer:set(FAST_TIMER)
 end
@@ -230,14 +238,43 @@ level_choose = function()
 	level_in = false
 	level_out = false
 	level_load()
+
 	level_map(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2)
+
+	local st = level_stat()
+	local lev = sprite.text(fn, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
+	local w, h = sprite.size(lev)
+
+	sprite.fill(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 - h - h / 2, 256, h, 'black');
+	sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 - h - h / 2);
+	sprite.free(lev)
+	sprite.fill(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 + 256 + h /2, 256, h, 'black');
+
+	if st.completed > 0 then
+		lev = sprite.text(fn, stead.string.format(_("completed:COMPLETED"), st.completed), 'red', 1)
+		local w, h = sprite.size(lev)
+		sprite.draw(lev, offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 + 256 + h / 2);
+		sprite.free(lev)
+
+		lev = sprite.text(fn, stead.string.format(_("score:SCORE")..":%d", st.score), 'red', 1)
+		local w, h = sprite.size(lev)
+		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w), (scr_h - 256) / 2 + 256 + h / 2);
+		sprite.free(lev)
+	elseif st.die > 0 then
+		lev = sprite.text(fn, stead.string.format(_("tries:ПОПЫТОК")..": %d", st.die), 'red', 1)
+		local w, h = sprite.size(lev)
+		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 + 256 + h / 2);
+		sprite.free(lev)
+	end
 	sprite.copy(offscreen, sprite.screen())
 	timer:set(FAST_TIMER / 2)
 end
 MAP_SPEED = 32
 game.timer = function(s)
 	if level_in then
+		local bw,bh = sprite.size(banner)
 		if level_in < 0 then level_in = 0 end
+		sprite.copy(banner, sprite.screen(), 0, level_in - bh)
 		level_render(sprite.screen(), level_in)
 		if level_in == 0 then
 			level_ready()
@@ -247,10 +284,13 @@ game.timer = function(s)
 		return
 	end
 	if level_out then
-		if level_out >= scr_h then level_out = scr_h end
-		sprite.fill(sprite.screen(), 0, level_out - 8, scr_h, level_out, 'black')
+		local bw,bh = sprite.size(banner)
+
+		if level_out >= scr_h + bh then level_out = scr_h + bh end
+		sprite.fill(sprite.screen(), 0, level_out - 8 - bh, scr_h, level_out, 'black')
+		sprite.copy(banner, sprite.screen(), 0, level_out - bh);
 		sprite.copy(offscreen, sprite.screen(), 0, level_out)
-		if level_out == scr_h then
+		if level_out == scr_h + bh then
 			level_movein()
 			return
 		end
@@ -372,6 +412,7 @@ human_gold = function(x, y)
 	-- sound
 	sound.play(sounds[SCLICK])
 	-- score
+	nr_score = nr_score + 1
 	return human_move(x, y)
 end
 human_move = function(x, y)
@@ -398,6 +439,8 @@ end
 
 human_death = function(x, y)
 	explode(x, y)
+	level_stat().die = level_stat().die + 1
+	prefs:store()
 end
 
 game_dispatch = function(c, x, y)
@@ -501,10 +544,31 @@ explode = function(x, y)
 	sound.play(sounds[SDIE])
 	local c = cell_get(player_x, player_y)
 	if c ~= BHUMAN and c < 12 then
+		level_stat().die = level_stat().die + 1
+		prefs:store()
 		level_reset()
 	end
 	return xe, ye
 end
+
+level_stat = function()
+	local st = prefs.stat[nr_level]
+	if not st then
+		prefs.stat[nr_level] = { }
+		st = prefs.stat[nr_level]
+	end
+	if type(st.completed) ~= 'number' then
+		st.completed = 0
+	end
+	if type(st.die) ~= 'number' then
+		st.die = 0
+	end
+	if type(st.score) ~= 'number' then
+		st.score = 0
+	end
+	return st
+end
+
 fall = function()
 	local nr_gold = 0
 	local x, y, c
@@ -558,12 +622,20 @@ fall = function()
 	c = cell_get(player_x, player_y)
 	if c ~= BHUMAN and c < 12 then
 --		print ("dec lives"..c)
+		level_stat().die = level_stat().die + 1
+		prefs:store()
 		level_reset()
 		return
 	end
 	if nr_gold == 0 then
+		-- completed
+		level_stat().completed = level_stat().completed + 1
+		if level_stat().score < nr_score then
+			level_stat().score = nr_score
+		end
+		prefs:store()
 		nr_level = nr_level + 1
-		level_reset()
+		level_reset(true)
 	end
 end
 
@@ -791,11 +863,11 @@ init = function()
 	load_sprites()
 	load_sounds()
 	offscreen = sprite.blank(scr_w, scr_h)
+	banner = sprite.blank(scr_w, 32)
 	sprite.fill(sprite.screen(), 'black');
 end
 start = function()
 	level_choose()
 end
-
+dofile "i18n.lua"
 dofile "maps.lua"
-
