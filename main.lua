@@ -79,6 +79,9 @@ load_sprites = function()
 	fn2 = sprite.font("gfx/font.ttf", 26);
 	tfn = sprite.font("gfx/font.ttf", 12);
 	press_any_key = sprite.text(tfn, _("press:PRESS ANY KEY"), 'red', 1)
+	press_enter = sprite.text(fn, _("press_enter:PRESS ENTER"), 'red', 1)
+	la_spr = sprite.load("gfx/la.png")
+	ra_spr = sprite.load("gfx/ra.png")
 end
 
 BEMPTY = 0
@@ -286,6 +289,8 @@ level_choose = function()
 	level_out = false
 	level_load()
 
+	select_time = 0
+
 	sprite.fill(offscreen, 'black')
 	level_map(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2)
 
@@ -314,7 +319,16 @@ level_choose = function()
 		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 + 256 + h / 2);
 		sprite.free(lev)
 	end
+
 	sprite.copy(offscreen, sprite.screen())
+	if (nr_level + 1) ~= nr_levels then
+		sprite.copy(ra_spr, sprite.screen(), scr_w - 24 - 16, 256 - 16)
+	end
+
+	if nr_level > 0 then
+		sprite.copy(la_spr, sprite.screen(), 24, 256 - 16)
+	end
+
 	timer:set(FAST_TIMER / 2)
 end
 MAP_SPEED = 32
@@ -424,14 +438,26 @@ game.timer = function(s)
 			end
 		end
 		if level_select == true then
+			select_time = select_time + 1
+			if select_time >= 1000 then select_time = 0 end
+			local w,h = sprite.size(press_enter)
+			sprite.fill(sprite.screen(), (scr_w - w) / 2, scr_h - h * 2, w, h, 'black');
+
+			if stead.math.floor(select_time / 10) % 2 ~= 0 then
+				sprite.draw(press_enter, sprite.screen(), 
+					(scr_w - w) / 2, scr_h - h * 2);
+			end
+
 			if (is_key 'right' or is_key 'down') and nr_level < nr_levels - 1 then
 				nr_level = nr_level + 1
 				selected_level = nr_level
 				level_select = -MAP_SPEED
+				level_load()
 			elseif (is_key 'left' or is_key 'up') and nr_level > 0 then
 				nr_level = nr_level - 1
 				selected_level = nr_level
 				level_select = MAP_SPEED
+				level_load()
 			elseif is_return() then
 				selected_level = nr_level
 				sprite.fill(sprite.screen(), 'black')
@@ -447,7 +473,6 @@ game.timer = function(s)
 				demo_mode = true
 				return
 			end
-			level_load()
 		end
 		return
 	end
