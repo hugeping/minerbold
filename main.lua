@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:0.2$
+--$Version:0.3$
 instead_version "2.0.0"
 TIMER = 85
 FAST_TIMER = 30
@@ -1549,3 +1549,8 @@ start = function()
 end
 dofile "i18n.lua"
 dofile "maps.lua"
+
+main.nam = '!!!';
+main.dsc = function(s)
+	p (_("warning:Please, go to settings and switch on own themes feature!"))
+end
