@@ -222,6 +222,7 @@ level_reset = function(win, notitle)
 	if win and not demo_mode then
 		history_store(win)
 	end
+	happy_end_off = 0
 	sprite.copy(sprite.screen(), offscreen)
 	level_out = 0
 	level_load()
@@ -262,7 +263,11 @@ level_movein = function()
 	local st = level_stat()
 	local bant
 	if not demo_mode then
-		bant = sprite.text(fn2, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
+		if nr_level == nr_levels then
+			bant = sprite.text(fn2, stead.string.format(_("end:THE END")), 'red', 1)
+		else
+			bant = sprite.text(fn2, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
+		end
 	else
 		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
 	end
@@ -284,6 +289,9 @@ level_ready = function()
 end
 
 level_choose = function()
+	if nr_level >= nr_levels then
+		nr_level = 0
+	end
 	level_select = true
 	level_in = false
 	level_out = false
@@ -797,10 +805,14 @@ fall = function()
 		level_reset()
 		return
 	end
-	if nr_gold == 0 then -- or is_return() then
+	if nr_gold == 0 then -- or is_return() then -- hack
 		-- completed
 		if demo_mode then
 			level_reset()
+			return
+		end
+		if nr_level == nr_levels then
+			title_enter()
 			return
 		end
 		level_stat().completed = level_stat().completed + 1
@@ -810,14 +822,13 @@ fall = function()
 --		prefs:store()
 		local l = nr_level
 		nr_level = nr_level + 1
-		selected_level = nr_level
 		if nr_level == nr_levels then
 			-- lookup first undone
 			local i
 			for i=0,nr_levels - 1 do
-				if not prefs.stat[i] or 
+				if (not prefs.stat[i] or 
 				    not prefs.stat[i].completed or 
-				    prefs.stat[i].completed == 0 then
+				    prefs.stat[i].completed == 0) then
 					nr_level = i
 					break
 				end
@@ -825,9 +836,10 @@ fall = function()
 		end
 		if nr_level == nr_levels then
 			-- todo game over
-			nr_level = 0
+			nr_level = nr_levels
 			level_reset(l)
 		else
+			selected_level = nr_level
 			level_reset(l)
 		end
 	end
@@ -1098,6 +1110,10 @@ game_loop = function()
 		return
 	end
 
+	if nr_level == nr_levels and happy_end_spr_w then
+		sprite.fill(sprite.screen(), (scr_w - happy_end_spr_w)/2, scr_h /2, happy_end_spr_w, scr_h / 2, "black")
+	end
+
 	if (player_x % 2 == 0) and (player_y % 2 == 0)  then
 		player_movex, player_movey = 0, 0
 		if is_key 'up' then
@@ -1147,6 +1163,11 @@ game_loop = function()
 		return
 	end
 	enemy();
+
+	if nr_level == nr_levels then
+		happy_end_render()
+	end
+
 end
 title = {
 "     :   : ::: :  : ::: ::      ",
@@ -1172,7 +1193,7 @@ title_text = {
 " ",
 "    Программа была написана А. В. Меленьтевым в 1989 г.",
 "для БК-0010. Оформлять игру помог Н. Валтер.",
-"    Порт игры под INSTEAD выполнен П.А. Косых в 2015 г.",
+"    Порт игры под INSTEAD выполнен П. А. Косых в 2015 г.",
 }
 
 title_text_en = {
@@ -1187,6 +1208,175 @@ title_text_en = {
 "for BK-0010 computers. N. Walter helped him.",
 "    Ported to INSTEAD by P.A. Kosyh in 2015.",
 }
+happy_end_map = 
+
+{
+"::::::::::::::::",
+"               $",
+"                ",
+"                ",
+"                ",
+"+      @@       ",
+"::::::::::::::::",
+"%              &",
+"                ",
+"                ",
+"                ",
+"                ",
+"                ",
+"                ",
+"                ",
+"                ",
+}
+
+happy_end_text = {
+"Поздравляю!",
+"Вы прошли эту непростую игру!",
+" ",
+"Надеюсь, она понравилась вам также",
+"как и мне 25 лет назад...",
+" ",
+"Кстати, вы можете смотреть записанные",
+"демонстрации, нажав на клавишу D",
+"из режима выбора уровня",
+"или прямо во время игры",
+" ",
+"Вы можете посмотреть",
+"другие INSTEAD игры по адресу:",
+"http://instead.syscall.ru",
+" ",
+"Выражаю благодарность и признательность:",
+" ",
+"Жене и детям",
+"за понимание",
+" ",
+"А. В. Мелентьеву и Н. Валтеру",
+"за Bolder Dash для БК-0010",
+" ",
+"Леониду Брухису",
+"За эмулятор БК-0010 для Unix",
+" ",
+"Всем разработчикам БК-0010",
+" ",
+"Без всех этих людей",
+"ремейк игры был бы невозможен...",
+" ",
+" ",
+" ",
+" ",
+" ",
+" ",
+"КОНЕЦ",
+" ",
+" ",
+" ",
+" ",
+"                   Косых Петр 2015",
+}
+
+happy_end_text_en = {
+"Congratulations!",
+"You win!",
+" ",
+"I hope you like this small game",
+"It was written 25 years ago...",
+" ",
+"Btw, you may run demo of any level",
+"Just press D key from map selection",
+"menu or just in game",
+" ",
+"Visit http://instead.syscall.ru",
+"for other INSTEAD games",
+" ",
+"Thanks to:",
+" ",
+"My wife and childrens",
+" ",
+"A. V. Melentiev and N. Walter",
+"for they Bolder Dash game",
+" ",
+"Leonid A. Broukhis",
+"for БК-0010 emulator",
+" ",
+"And all BK-0010 developers!",
+" ",
+"Thank you for playing this game!",
+" ",
+" ",
+" ",
+" ",
+" ",
+" ",
+"THE END",
+" ",
+" ",
+" ",
+" ",
+"                   Peter Kosyh 2015",
+}
+happy_end_spr = {}
+happy_end_render = function()
+	if not happy_end_off then
+		happy_end_off = 0
+	end
+	local off = happy_end_off
+	local het = happy_end_text
+	if LANG ~= 'ru' then
+		het = happy_end_text_en
+	end
+	local k,v 
+	local fh = sprite.font_height(tfn)
+	local off2 = off
+	local bh = scr_h / 2
+	local delta = bh - off
+	local start = 1
+	local start_y = scr_h
+	if not happy_end_spr_w then
+		happy_end_spr_w = 0
+		happy_end_spr_h = 0
+		for k,v in ipairs(het) do
+			local w,h = sprite.text_size(tfn, v)
+			if w > happy_end_spr_w then
+				happy_end_spr_w = w
+			end
+			happy_end_spr_h = happy_end_spr_h + h
+		end
+	end
+	if delta < 0 then
+		for k,v in ipairs(het) do
+			if delta + fh >= 0 then
+				start = k
+				start_y = delta
+				break
+			end
+			delta = delta + fh
+		end
+	else
+		start_y = delta
+	end
+--prite.fill(sprite.screen(), (scr_w - happy_end_spr_w)/2, scr_h /2, happy_end_spr_w, scr_h / 2, "black")
+	local ox = (scr_w - happy_end_spr_w)/2
+	for k = start, #het do
+		v = het[k]
+		if not happy_end_spr[k] then
+			happy_end_spr[k] = sprite.text(tfn, v, '#ff0000', 1)
+		end
+	local w, h = sprite.size(happy_end_spr[k])
+		if delta < 0 and k == start then
+			sprite.draw(happy_end_spr[k], 0, -delta, w, h + delta, sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h /2 + start_y - delta)
+		else
+			sprite.draw(happy_end_spr[k], sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h /2 + start_y)
+		end
+		start_y = start_y + fh
+		if start_y >= scr_h then
+			break
+		end
+	end
+	happy_end_off = happy_end_off + 2
+	if happy_end_off > (happy_end_spr_h + bh)  then
+		happy_end_off = 0
+	end
+end
 
 title_render = function(where, ox, oy)
 	local char2map = {
@@ -1226,7 +1416,7 @@ title_render = function(where, ox, oy)
 		end
 	end
 	local dh = #title * 16 + 16
-	local fw, fh = sprite.text_size(tfn)
+	local fh = sprite.font_height(tfn)
 	fh = fh + stead.math.floor(fh / 3)
 	for k, v in ipairs(title_tspr) do
 		sprite.fill(where, ox, oy + dh + (k - 1) * fh, scr_w, h, 'black')
@@ -1265,6 +1455,10 @@ init = function()
 	banner = sprite.blank(scr_w, 32)
 	sprite.fill(sprite.screen(), 'black');
 	level_select = true
+	local k,v 
+	for k,v in ipairs(happy_end_map) do
+		stead.table.insert(maps, v)
+	end
 end
 start = function()
 	if not level_select and not title_mode then
