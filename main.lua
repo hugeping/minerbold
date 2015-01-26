@@ -77,6 +77,8 @@ load_sprites = function()
 	end
 	fn = sprite.font("gfx/font.ttf", 16);
 	fn2 = sprite.font("gfx/font.ttf", 26);
+	tfn = sprite.font("gfx/font.ttf", 12);
+	press_any_key = sprite.text(tfn, _("press:PRESS ANY KEY"), 'red', 1)
 end
 
 BEMPTY = 0
@@ -347,8 +349,6 @@ game.timer = function(s)
 			title_mode = title_mode - 32
 			if title_mode < 32 then title_mode = 32 end
 			title_render(sprite.screen(), 0, title_mode);
-			sprite.fill(sprite.screen(), 0, title_mode + #title * 16, 512, 32, 'black');
-			sprite.fill(sprite.screen(), 0, title_mode - 32, 512, 32, 'black');
 		end
 		if title_mode == 32 then
 			title_mode = true
@@ -360,6 +360,15 @@ game.timer = function(s)
 			level_choose()
 			sound.play(sounds[SPHASER], 3)
 			return
+		end
+		local w,h = sprite.size(press_any_key)
+		if title_mode == true then
+			sprite.fill(sprite.screen(), 
+				(scr_w - w) / 2, scr_h - h * 2, w, h, 'black');
+			if stead.math.floor(title_time / 10) % 2 ~= 0 then
+				sprite.draw(press_any_key, sprite.screen(), 
+					(scr_w - w) / 2, scr_h - h * 2);
+			end
 		end
 		return
 	end
@@ -1127,6 +1136,32 @@ title = {
 "     ## ## ## ## ##   ## ##     ",
 "     ####   ###  #### ####      ",
 };
+title_text = {
+"                                    ИНСТРУКЦИЯ:",
+"    Ваша задача: собрать все алмазы в лабиринте и перейти",
+"в следующий.",
+"    Попадаться в руки бабочкам и минам, а также оказаться",
+"под падающим камнем или алмазом опасно для жизни.",
+"    Ваших сил хватит для толкания камней в любом",
+"направлении. Остальное поймете сами по ходу игры.",
+" ",
+"    Программа была написана А. В. Меленьтевым в 1989 г.",
+"для БК-0010. Оформлять игру помог Н. Валтер.",
+"    Порт игры под INSTEAD выполнен П.А. Косых в 2015 г.",
+}
+
+title_text_en = {
+"                                    INSTRUCTIONS:",
+" ",
+"    Your mission: got all jewels on the level. Avoid butterfiles",
+" mines and falling stones.",
+"    You are strong enougth to move stones in any direction.",
+"    Good luck!",
+" ",
+"    Original code was written by A. V. Melentiev in 1989.",
+"for BK-0010 computers. N. Walter helped him.",
+"    Ported to INSTEAD by P.A. Kosyh in 2015.",
+}
 
 title_render = function(where, ox, oy)
 	local char2map = {
@@ -1149,7 +1184,35 @@ title_render = function(where, ox, oy)
 				ox + (x - 1) * 16, oy + (y - 1) * 16);
 		end
 	end
- 
+	sprite.fill(where, 0, oy + #title * 16, 512, 32, 'black');
+	sprite.fill(where, 0, oy - 32, 512, 32, 'black');
+	local k,v
+	if not title_tspr then
+		tspr_width = 0
+		title_tspr = {}
+		local t = title_text_en
+		if LANG == "ru" then
+			t = title_text
+		end
+		for k,v in ipairs(t) do
+			title_tspr[k] = sprite.text(tfn, v, '#00ff00', 1)
+			local w, h = sprite.size(title_tspr[k])
+			if w > tspr_width then tspr_width = w end
+		end
+	end
+	local dh = #title * 16 + 16
+	local fw, fh = sprite.text_size(tfn)
+	fh = fh + stead.math.floor(fh / 3)
+	for k, v in ipairs(title_tspr) do
+		sprite.fill(where, ox, oy + dh + (k - 1) * fh, scr_w, h, 'black')
+	end
+	local dy
+	for k, v in ipairs(title_tspr) do
+		local w, h = sprite.size(v)
+		dy = oy + dh + (k - 1) * fh
+		sprite.draw(v, where, ox + (scr_w - tspr_width) / 2, dy)
+	end
+	sprite.fill(where, 0, dy + fh, scr_w, 32, 'black')
 end
 
 title_enter = function()
