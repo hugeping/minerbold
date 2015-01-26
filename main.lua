@@ -32,6 +32,8 @@ SLEVELIN = 4
 STRILL = 5
 SPHASER = 6
 
+
+
 load_sounds = function()
 	sounds[SDIE] = sound.load "snd/explode.ogg"
 	sounds[SFALL] = sound.load "snd/fall.ogg"
@@ -533,6 +535,7 @@ game.timer = function(s)
 			elseif is_return() then
 				selected_level = nr_level
 				sprite.fill(sprite.screen(), 'black')
+				stop_music();
 				level_load()
 				level_movein()
 				return
@@ -869,7 +872,7 @@ fall = function()
 		level_reset()
 		return
 	end
-	if nr_gold == 0 then -- or is_return() then -- hack
+	if nr_gold == 0 -- or is_return() then -- hack
 		-- completed
 		if demo_mode then
 			level_reset()
@@ -902,6 +905,7 @@ fall = function()
 			-- todo game over
 			nr_level = nr_levels
 			level_reset(l)
+			set_music 'snd/486.xm'
 		else
 			selected_level = nr_level
 			level_reset(l)
@@ -1326,6 +1330,10 @@ happy_end_text = {
 "ремейк игры был бы невозможен...",
 " ",
 " ",
+"В игре использованы треки:",
+" ",
+"Chip never dies от ajaxlemon",
+"IBM 486 66Mhz от ExcelioN",
 " ",
 " ",
 " ",
@@ -1367,6 +1375,10 @@ happy_end_text_en = {
 "Thank you for playing this game!",
 " ",
 " ",
+"Music:",
+" ",
+"Chip never dies by ajaxlemon",
+"IBM 486 66Mhz by ExcelioN",
 " ",
 " ",
 " ",
@@ -1495,6 +1507,7 @@ title_render = function(where, ox, oy)
 end
 
 title_enter = function()
+	set_music('snd/chipneve.xm')
 	title_time = 0
 	title_mode = scr_h
 	timer:set(FAST_TIMER)
@@ -1513,6 +1526,7 @@ game.save = function(s, ...)
 	return orig_save(s, ...)
 end
 init = function()
+	set_music_fading(500, 500)
 	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd', 'escape');
 	load_sprites()
 	load_sounds()
