@@ -177,9 +177,72 @@ level_map = function(where, ox, oy)
 end
 
 keys = {}
+key_empty = function()
+	keys = {}
+	key_any, key_esc, key_demo, key_return = false, false, false, false
+end
+if stead.finger_pos then
+	require "finger"
+	game.finger = function(s, press, fid, x, y)
+		use_fingers = true
+		if press and x > scr_w / 3 and x < scr_w * 2 / 3 then
+			key_return = press
+			key_any = press
+		end
+		if press then
+			finger_x = x
+			finger_y = y
+		else
+			key_empty()
+		end
+	end
+end
+
+function check_fingers()
+	if not use_fingers then
+		return
+	end
+	keys = {}
+
+	local fng = finger:list()
+	local max_r = 0
+	local max_v = false
+	local k, v
+	for k,v in ipairs(fng) do
+		local x, y = v.x, v.y
+		local dx = v.x - finger_x
+		local dy = v.y - finger_y
+		local r = stead.math.sqrt(dx*dx + dy*dy)
+		if r > max_r then
+			max_r = r
+			max_v = v
+		end
+	end
+	if max_r < 8 then
+		return
+	end
+	v = max_v
+	local dx = v.x - finger_x
+	local dy = v.y - finger_y
+
+	if stead.math.abs(dx) >= stead.math.abs(dy) then
+		-- lr
+		if dx < 0 then
+			game:kbd(true, 'left')
+		else
+			game:kbd(true, 'right')
+		end
+	else
+		-- ud
+		if dy < 0 then
+			game:kbd(true, 'up')
+		else
+			game:kbd(true, 'down')
+		end
+	end
+end
 
 game.kbd = function(s, down, key)
-
 	if key == 'space' or key == 'return' then
 		key_return = down
 		return
@@ -360,6 +423,7 @@ demo_enter = function()
 end
 
 game.timer = function(s)
+	check_fingers()
 	if title_mode then
 		title_time = title_time + 1
 		if title_time > 300 then
@@ -376,7 +440,7 @@ game.timer = function(s)
 			title_mode = true
 		end 
 		if title_mode == true and is_anykey() then
-			keys = {}
+			key_empty()
 			title_mode = false
 			nr_level = selected_level
 			level_choose()
@@ -1439,6 +1503,7 @@ title_enter = function()
 --	sound.stop(-1)
 	sound.play(sounds[STRILL], 3)
 	level_after = false
+	key_empty()
 end
 orig_save = game.save
 game.save = function(s, ...)
