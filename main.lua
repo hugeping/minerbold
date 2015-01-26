@@ -872,7 +872,7 @@ fall = function()
 		level_reset()
 		return
 	end
-	if nr_gold == 0 -- or is_return() then -- hack
+	if nr_gold == 0 then -- or is_return() then -- hack
 		-- completed
 		if demo_mode then
 			level_reset()
