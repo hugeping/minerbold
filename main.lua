@@ -1,5 +1,6 @@
 --$Name:Miner Bold$
---$Version:0.3$
+--$Version:0.4$
+--$Author:Peter Kosyh$
 instead_version "2.0.0"
 TIMER = 85
 FAST_TIMER = 30
@@ -302,7 +303,7 @@ level_reset = function(win, notitle)
 		if win then
 			bant = sprite.text(fn2, stead.string.format(_("score:SCORE").." %d", nr_score), 'red', 1)
 		else
-			bant = sprite.text(fn2, stead.string.format(_("tries:TRIES").." %d", st.die), 'red', 1)
+			bant = sprite.text(fn2, stead.string.format(_("try:TRIES").." %d", st.die), 'red', 1)
 		end
 	end
 	demo_mode = false
@@ -387,7 +388,7 @@ level_choose = function()
 		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w), (scr_h - 256) / 2 + 256 + h / 2);
 		sprite.free(lev)
 	elseif st.die > 0 then
-		lev = sprite.text(fn, stead.string.format(_("tries:ПОПЫТОК").." %d", st.die), 'red', 1)
+		lev = sprite.text(fn, stead.string.format(_("try:TRIES").." %d", st.die), 'red', 1)
 		local w, h = sprite.size(lev)
 		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 + 256 + h / 2);
 		sprite.free(lev)
@@ -1425,6 +1426,10 @@ happy_end_render = function()
 				start_y = delta
 				break
 			end
+			if happy_end_spr[k] then
+				sprite.free(happy_end_spr[k])
+				happy_end_spr[k] = nil
+			end
 			delta = delta + fh
 		end
 	else
@@ -1441,7 +1446,7 @@ happy_end_render = function()
 		if delta < 0 and k == start then
 			sprite.draw(happy_end_spr[k], 0, -delta, w, h + delta, sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h /2 + start_y - delta)
 		else
-			sprite.draw(happy_end_spr[k], sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h /2 + start_y)
+			sprite.draw(happy_end_spr[k], sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h/2 + start_y)
 		end
 		start_y = start_y + fh
 		if start_y >= scr_h then
