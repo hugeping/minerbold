@@ -441,10 +441,13 @@ game.timer = function(s)
 		end
 		if title_mode == 32 then
 			title_mode = true
-			local s = sprite.text(tfn, stead.string.format(_("score:SCORE").." %d", total_score), '#00ff00', 1)
-			local w, h = sprite.size(s)
-			sprite.draw(s, sprite.screen(), scr_w - w - 2, 2);
-			sprite.free(s)
+			local s
+			if total_score and total_score > 0 then
+				s = sprite.text(tfn, stead.string.format(_("score:SCORE").." %d", total_score), '#00ff00', 1)
+				local w, h = sprite.size(s)
+				sprite.draw(s, sprite.screen(), scr_w - w - 2, 2);
+				sprite.free(s)
+			end
 
 			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.5"), '#0000ff', 1)
 			local w, h = sprite.size(s)
