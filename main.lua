@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:0.4$
+--$Version:0.5$
 --$Author:Peter Kosyh$
 instead_version "2.0.0"
 TIMER = 85
@@ -441,6 +441,17 @@ game.timer = function(s)
 		end
 		if title_mode == 32 then
 			title_mode = true
+			local s = sprite.text(tfn, stead.string.format(_("score:SCORE").." %d", total_score), '#00ff00', 1)
+			local w, h = sprite.size(s)
+			sprite.draw(s, sprite.screen(), scr_w - w - 2, 2);
+			sprite.free(s)
+
+			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.5"), '#0000ff', 1)
+			local w, h = sprite.size(s)
+
+			sprite.draw(s, sprite.screen(), 2, 2);
+			sprite.free(s)
+
 		end 
 		if title_mode == true and is_anykey() then
 			key_empty()
@@ -1526,7 +1537,18 @@ title_enter = function()
 	sound.play(sounds[STRILL], 3)
 	level_after = false
 	key_empty()
+	local k,v
+
+	local score = 0
+
+	for k,v in pairs(prefs.stat) do
+		if v.score then
+			score = score + v.score
+		end
+	end
+	total_score = score
 end
+
 orig_save = game.save
 game.save = function(s, ...)
 	if demo_mode then
