@@ -687,6 +687,7 @@ human_death = function(x, y)
 	explode(x, y)
 	level_stat().die = level_stat().die + 1
 --	prefs:store()
+	stead.autosave()
 end
 
 game_dispatch = function(c, x, y)
@@ -792,6 +793,7 @@ explode = function(x, y)
 	if c ~= BHUMAN and c < 12 then
 		level_stat().die = level_stat().die + 1
 --		prefs:store()
+		stead.autosave()
 		level_reset()
 	end
 	return xe, ye
@@ -870,6 +872,7 @@ fall = function()
 --		print ("dec lives"..c)
 		level_stat().die = level_stat().die + 1
 --		prefs:store()
+		stead.autosave()
 		level_reset()
 		return
 	end
@@ -888,6 +891,7 @@ fall = function()
 			level_stat().score = nr_score
 		end
 --		prefs:store()
+		stead.autosave()
 		local l = nr_level
 		nr_level = nr_level + 1
 		if nr_level == nr_levels then
