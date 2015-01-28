@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:0.6$
+--$Version:0.7$
 --$Author:Peter Kosyh$
 instead_version "2.0.0"
 TIMER = 85
@@ -181,11 +181,12 @@ end
 
 keys = {}
 key_empty = function()
+	fingers = {}
 	keys = {}
 	key_any, key_esc, key_demo, key_return = false, false, false, false
 end
 
-
+fingers = {}
 if stead.finger_pos then
 	require "finger"
 	game.finger = function(s, press, fid, x, y)
@@ -195,12 +196,18 @@ if stead.finger_pos then
 			key_any = press
 		end
 		if press then
-			finger_x = x
-			finger_y = y
-			finger_id = fid
-		elseif fid == finger_id then
-			finger_x, finger_y, finger_id = false, false, false
-			key_empty()
+			stead.table.insert(fingers, 1, { id = fid, x = x, y = y })
+		else
+			local k,v
+			for k,v in ipairs(fingers) do
+				if v.id == fid then
+					stead.table.remove(fingers, k)
+					break
+				end
+			end
+			if #fingers == 0 then
+				key_empty()
+			end
 		end
 	end
 end
@@ -212,27 +219,31 @@ function check_fingers()
 	keys = {}
 
 	local fng = finger:list()
-	local max_r = 0
-	local max_v = false
 	local k, v
-	for k,v in ipairs(fng) do
-		if v.id == finger_id then
-			local x, y = v.x, v.y
-			local dx = v.x - finger_x
-			local dy = v.y - finger_y
-			local r = stead.math.sqrt(dx*dx + dy*dy)
-			if r > max_r then
-				max_r = r
-				max_v = v
-			end
-		end
-	end
-	if max_r < 8 then
+	if #fingers == 0 then
 		return
 	end
-	v = max_v
-	local dx = v.x - finger_x
-	local dy = v.y - finger_y
+	local V
+	for k,v in ipairs(fng) do
+		if v.id == fingers[1].id then
+			V = v
+			break
+		end
+	end
+	if not V then
+		stead.table.remove(fingers, 1) -- lost one?
+		return
+	end
+	v = V
+
+	local dx = v.x - fingers[1].x
+	local dy = v.y - fingers[1].y
+
+	local r = stead.math.sqrt(dx*dx + dy*dy)
+
+	if r < 8 then
+		return
+	end
 
 	if stead.math.abs(dx) >= stead.math.abs(dy) then
 		-- lr
@@ -455,7 +466,7 @@ game.timer = function(s)
 				sprite.free(s)
 			end
 
-			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.6"), '#0000ff', 1)
+			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.7"), '#0000ff', 1)
 			local w, h = sprite.size(s)
 
 			sprite.draw(s, sprite.screen(), 2, 2);
