@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:0.5$
+--$Version:0.6$
 --$Author:Peter Kosyh$
 instead_version "2.0.0"
 TIMER = 85
@@ -184,6 +184,8 @@ key_empty = function()
 	keys = {}
 	key_any, key_esc, key_demo, key_return = false, false, false, false
 end
+
+
 if stead.finger_pos then
 	require "finger"
 	game.finger = function(s, press, fid, x, y)
@@ -195,7 +197,9 @@ if stead.finger_pos then
 		if press then
 			finger_x = x
 			finger_y = y
-		else
+			finger_id = fid
+		elseif fid == finger_id then
+			finger_x, finger_y, finger_id = false, false, false
 			key_empty()
 		end
 	end
@@ -212,13 +216,15 @@ function check_fingers()
 	local max_v = false
 	local k, v
 	for k,v in ipairs(fng) do
-		local x, y = v.x, v.y
-		local dx = v.x - finger_x
-		local dy = v.y - finger_y
-		local r = stead.math.sqrt(dx*dx + dy*dy)
-		if r > max_r then
-			max_r = r
-			max_v = v
+		if v.id == finger_id then
+			local x, y = v.x, v.y
+			local dx = v.x - finger_x
+			local dy = v.y - finger_y
+			local r = stead.math.sqrt(dx*dx + dy*dy)
+			if r > max_r then
+				max_r = r
+				max_v = v
+			end
 		end
 	end
 	if max_r < 8 then
@@ -449,7 +455,7 @@ game.timer = function(s)
 				sprite.free(s)
 			end
 
-			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.5"), '#0000ff', 1)
+			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.6"), '#0000ff', 1)
 			local w, h = sprite.size(s)
 
 			sprite.draw(s, sprite.screen(), 2, 2);
