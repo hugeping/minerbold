@@ -302,6 +302,7 @@ end
 global { level_in = false, level_out = false, level_select = false, title_mode = false }
 
 level_reset = function(win, notitle)
+	key_empty()
 	if win and not demo_mode then
 		history_store(win)
 	end
