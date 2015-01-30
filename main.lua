@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:0.7$
+--$Version:1.0$
 --$Author:Peter Kosyh$
 instead_version "2.0.0"
 TIMER = 85
@@ -187,10 +187,30 @@ key_empty = function()
 end
 
 fingers = {}
+touch_stamp = 0;
+touch_num = 0
+
 if stead.finger_pos then
 	require "finger"
 	game.finger = function(s, press, fid, x, y)
+		if press then
+			if stead.ticks() - touch_stamp > 200 then
+				touch_num = 0
+				touch_stamp = stead.ticks()
+			end
+			touch_num = touch_num + 1
+		else
+			touch_num = 0
+			touch_stamp = 0
+		end
+		
+		if touch_num >= 3 then
+			key_esc = true
+			return
+		end
+
 		use_fingers = true
+
 		if press and x > scr_w / 3 and x < scr_w * 2 / 3 then
 			key_return = press
 			key_any = press
@@ -467,7 +487,7 @@ game.timer = function(s)
 				sprite.free(s)
 			end
 
-			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.7"), '#0000ff', 1)
+			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.1"), '#0000ff', 1)
 			local w, h = sprite.size(s)
 
 			sprite.draw(s, sprite.screen(), 2, 2);
