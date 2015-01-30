@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:1.0$
+--$Version:1.1$
 --$Author:Peter Kosyh$
 instead_version "2.0.0"
 TIMER = 85
@@ -487,7 +487,7 @@ game.timer = function(s)
 				sprite.free(s)
 			end
 
-			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 0.1"), '#0000ff', 1)
+			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 1.1"), '#0000ff', 1)
 			local w, h = sprite.size(s)
 
 			sprite.draw(s, sprite.screen(), 2, 2);
@@ -574,13 +574,28 @@ game.timer = function(s)
 				sprite.draw(press_enter, sprite.screen(), 
 					(scr_w - w) / 2, scr_h - h * 2);
 			end
-
-			if (is_key 'right' or is_key 'down') and nr_level < nr_levels - 1 then
+			if is_key 'down' and nr_level < nr_levels - 1 then
+				nr_level = nr_level + 10
+				if nr_level >= nr_levels then
+					nr_level = nr_levels - 1
+				end
+				selected_level = nr_level
+				level_select = -MAP_SPEED
+				level_load()
+			elseif is_key 'right' and nr_level < nr_levels - 1 then
 				nr_level = nr_level + 1
 				selected_level = nr_level
 				level_select = -MAP_SPEED
 				level_load()
-			elseif (is_key 'left' or is_key 'up') and nr_level > 0 then
+			elseif is_key 'up' and nr_level > 0 then
+				nr_level = nr_level - 10
+				if nr_level < 0 then
+					nr_level = 0
+				end
+				selected_level = nr_level
+				level_select = MAP_SPEED
+				level_load()
+			elseif is_key 'left' and nr_level > 0 then
 				nr_level = nr_level - 1
 				selected_level = nr_level
 				level_select = MAP_SPEED
@@ -1621,6 +1636,9 @@ start = function()
 end
 dofile "i18n.lua"
 dofile "maps.lua"
+nr_levels = #maps / 16
+
+print (nr_levels.." level(s) loaded...");
 
 main.nam = '!!!';
 main.dsc = function(s)
