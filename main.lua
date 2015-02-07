@@ -526,9 +526,9 @@ end
 
 human_death = function(x, y)
 	explode(x, y)
---	level_stat().die = level_stat().die + 1
---	prefs:store()
+	level_stat().die = level_stat().die + 1
 	stead.autosave()
+	level_reset()
 end
 
 game_dispatch = function(c, x, y)
@@ -631,13 +631,13 @@ explode = function(x, y)
 	end
 	-- sound
 	sound.play(sounds[SDIE])
-	local c = cell_get(player_x, player_y)
-	if c ~= BHUMAN and c < 12 then
-		level_stat().die = level_stat().die + 1
+--	local c = cell_get(player_x, player_y)
+--	if c ~= BHUMAN and c < 12 then
+--		level_stat().die = level_stat().die + 1
 --		prefs:store()
-		stead.autosave()
-		level_reset()
-	end
+--		stead.autosave()
+--		level_reset()
+--	end
 	return xe, ye
 end
 bank_stat = function()
