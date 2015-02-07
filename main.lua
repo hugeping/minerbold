@@ -334,7 +334,15 @@ banks_init = function(s)
 			stead.table.insert(m, v)
 		end
 	end
-	stead.table.sort(m)
+	stead.table.sort(m, function(a ,b) 
+				if a == 'maps.map' then 
+					return true 
+				elseif b == 'maps.map' then
+					return false
+				else 
+					return a < b 
+				end 
+	end)
 	for k, v in ipairs(m) do
 		local f = io.open(instead_gamepath().."/"..v)
 		if f then
@@ -352,7 +360,6 @@ banks_init = function(s)
 					name_i18n = l:gsub("^.*%$Name%(([a-zA-Z]+)%):[ \t]*(.*)[ \t]*$", "%2")
 					name_lang = l:gsub("^.*%$Name%(([a-zA-Z]+)%):[ \t]*(.*)[ \t]*$", "%1")
 				end
-
 			end
 			if name_i18n then
 				stead.table.insert(banks, { title = name, title_i18n = { [name_lang] = name_i18n }, file = v, name = sname })
