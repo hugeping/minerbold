@@ -121,13 +121,13 @@ MAP_SPEED = 32
 demo_enter = function()
 	local l
 	local ll = {}
-	menu_select('demo', false)
 	for l = 0, nr_levels -1 do
 		if history_check(l) then
 			stead.table.insert(ll, l)
 		end
 	end
 	if #ll == 0 then return end
+	menu_select('demo', false)
 	nr_level = ll[rnd(#ll)]
 	level_load()
 	level_reset(false, true)
