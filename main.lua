@@ -519,7 +519,7 @@ end
 
 human_death = function(x, y)
 	explode(x, y)
-	level_stat().die = level_stat().die + 1
+--	level_stat().die = level_stat().die + 1
 --	prefs:store()
 	stead.autosave()
 end
@@ -633,8 +633,7 @@ explode = function(x, y)
 	end
 	return xe, ye
 end
-
-level_stat = function()
+bank_stat = function()
 	local st = prefs.stat
 	local nam = banks[nr_bank].name
 	if nam ~= 'maps' then
@@ -647,11 +646,16 @@ level_stat = function()
 		end
 		st = prefs.maps_stat[nam]
 	end
-	st = st[nr_level]
-	if not st then
-		prefs.stat[nr_level] = { }
-		st = prefs.stat[nr_level]
+	return st
+end
+
+level_stat = function()
+	local st = bank_stat()
+	local lst = st[nr_level]
+	if not lst then
+		st[nr_level] = { }
 	end
+	st = st[nr_level]
 	if type(st.completed) ~= 'number' then
 		st.completed = 0
 	end

@@ -658,7 +658,7 @@ title_enter = function()
 
 	local score = 0
 
-	for k,v in pairs(prefs.stat) do
+	for k,v in pairs(bank_stat()) do
 		if v.score then
 			score = score + v.score
 		end
