@@ -1,13 +1,16 @@
 --$Name:Miner Bold$
---$Version:1.1$
+--$Version:1.2$
 --$Author:Peter Kosyh$
+
 instead_version "2.0.0"
 TIMER = 85
 FAST_TIMER = 30
+
 require "sprites"
 require "sound"
 require "timer"
 require "kbd"
+
 -- require "prefs"
 
 sprites = {}
@@ -25,6 +28,7 @@ global {
 };
 
 prefs.stat = {}
+prefs.maps_stat = {}
 
 SDIE = 1
 SFALL = 2
@@ -32,8 +36,6 @@ SCLICK = 3
 SLEVELIN = 4
 STRILL = 5
 SPHASER = 6
-
-
 
 load_sounds = function()
 	sounds[SDIE] = sound.load "snd/explode.ogg"
@@ -83,6 +85,7 @@ load_sprites = function()
 	tfn = sprite.font("gfx/font.ttf", 12);
 	press_any_key = sprite.text(tfn, _("press:PRESS ANY KEY"), 'red', 1)
 	press_enter = sprite.text(fn, _("press_enter:PRESS ENTER"), 'red', 1)
+	select_maps_spr = sprite.text(fn2, _("banks:SELECT GAME"), 'red', 1)
 	la_spr = sprite.load("gfx/la.png")
 	ra_spr = sprite.load("gfx/ra.png")
 end
@@ -289,7 +292,7 @@ game.kbd = function(s, down, key)
 	end
 
 	if key == 'escape' or key == 'backspace' then
-		if not title_mode then
+		if menu_mode ~= 'title' then
 			key_esc = down
 			return true
 		end
@@ -319,307 +322,70 @@ game.kbd = function(s, down, key)
 	stead.table.insert(keys, 1, key)
 end
 
-global { level_in = false, level_out = false, level_select = false, title_mode = false }
 
-level_reset = function(win, notitle)
-	key_empty()
-	if win and not demo_mode then
-		history_store(win)
-	end
-	happy_end_off = 0
-	sprite.copy(sprite.screen(), offscreen)
-	level_out = 0
-	level_load()
-	local st = level_stat()
-	local bant
-	history = {}
-	if demo_mode then
-		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
-	elseif notitle then
-		bant = false
-	else
-		if win then
-			bant = sprite.text(fn2, stead.string.format(_("score:SCORE").." %d", nr_score), 'red', 1)
-		else
-			bant = sprite.text(fn2, stead.string.format(_("try:TRIES").." %d", st.die), 'red', 1)
+banks = {
+}
+
+banks_init = function(s)
+	local k,v
+	local m = {}
+	for v in stead.readdir(instead_gamepath()) do
+		if v:find("%.map$") then
+			stead.table.insert(m, v)
 		end
 	end
-	demo_mode = false
-	nr_score = 0;
-	sprite.fill(banner, 'black')
-	if bant then
-		local w, h = sprite.size(bant)
-		sprite.draw(bant, banner, (scr_w - w) / 2, 0)
-		sprite.free(bant)
-	end
-	timer:set(FAST_TIMER)
-	if level_after then
-		level_after()
-		level_after = false
-	end
-end
+	stead.table.sort(m)
+	for k, v in ipairs(m) do
+		local f = io.open(instead_gamepath().."/"..v)
+		if f then
+			local l
+			local name = v:gsub("%.map$", "")
+			local sname = name
+			local name_i18n = false
+			for l in f:lines() do
+				if not l:find("^%-%-") and not l:find("^[ \t]*$") then
+					break
+				end
+				if l:find("$Name:", 1, true) then
+					name = l:gsub("^.*%$Name:[ \t]*(.*)[ \t]*$", "%1")
+				elseif l:find("%$Name%([a-zA-Z]+%):") then
+					name_i18n = l:gsub("^.*%$Name%(([a-zA-Z]+)%):[ \t]*(.*)[ \t]*$", "%2")
+					name_lang = l:gsub("^.*%$Name%(([a-zA-Z]+)%):[ \t]*(.*)[ \t]*$", "%1")
+				end
 
-level_movein = function()
-	level_out = false
-	level_select = false
-
-
-	local st = level_stat()
-	local bant
-	if not demo_mode then
-		if nr_level == nr_levels then
-			bant = sprite.text(fn2, stead.string.format(_("end:THE END")), 'red', 1)
-		else
-			bant = sprite.text(fn2, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
-		end
-	else
-		bant = sprite.text(fn2, stead.string.format(_("demo:DEMO").." %d", nr_level + 1), 'red', 1)
-	end
-	local w, h = sprite.size(bant)
-	sprite.fill(banner, 'black')
-	sprite.draw(bant, banner, (scr_w - w) / 2, 0)
-	sprite.free(bant)
-
-	level_in = scr_h + h
-	sound.play(sounds[SLEVELIN], 3)
-	timer:set(FAST_TIMER)
-end
-
-level_ready = function()
-	level_in = false
-	level_out = false
-	level_render(sprite.screen());
-	timer:set(TIMER)
-end
-
-level_choose = function()
-	if nr_level >= nr_levels then
-		nr_level = 0
-	end
-	level_select = true
-	level_in = false
-	level_out = false
-	level_load()
-
-	select_time = 0
-
-	sprite.fill(offscreen, 'black')
-	level_map(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2)
-
-	local st = level_stat()
-	local lev = sprite.text(fn, stead.string.format(_("level:LEVEL").." %d", nr_level + 1), 'red', 1)
-	local w, h = sprite.size(lev)
-
-	sprite.fill(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 - h - h / 2, 256, h, 'black');
-	sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 - h - h / 2);
-	sprite.free(lev)
-	sprite.fill(offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 + 256 + h /2, 256, h, 'black');
-
-	if st.completed > 0 then
-		lev = sprite.text(fn, stead.string.format(_("completed:COMPLETED"), st.completed), 'red', 1)
-		local w, h = sprite.size(lev)
-		sprite.draw(lev, offscreen, (scr_w - 256) / 2, (scr_h - 256) / 2 + 256 + h / 2);
-		sprite.free(lev)
-
-		lev = sprite.text(fn, stead.string.format(_("score:SCORE").." %d", st.score), 'red', 1)
-		local w, h = sprite.size(lev)
-		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w), (scr_h - 256) / 2 + 256 + h / 2);
-		sprite.free(lev)
-	elseif st.die > 0 then
-		lev = sprite.text(fn, stead.string.format(_("try:TRIES").." %d", st.die), 'red', 1)
-		local w, h = sprite.size(lev)
-		sprite.draw(lev, offscreen, (scr_w - 256) / 2 + (256 - w) / 2, (scr_h - 256) / 2 + 256 + h / 2);
-		sprite.free(lev)
-	end
-
-	sprite.copy(offscreen, sprite.screen())
-	if (nr_level + 1) ~= nr_levels then
-		sprite.copy(ra_spr, sprite.screen(), scr_w - 24 - 16, 256 - 16)
-	end
-
-	if nr_level > 0 then
-		sprite.copy(la_spr, sprite.screen(), 24, 256 - 16)
-	end
-
-	timer:set(FAST_TIMER / 2)
-end
-MAP_SPEED = 32
-
-demo_enter = function()
-	local l
-	local ll = {}
-	for l = 0, nr_levels -1 do
-		if history_check(l) then
-			stead.table.insert(ll, l)
+			end
+			if name_i18n then
+				stead.table.insert(banks, { title = name, title_i18n = { [name_lang] = name_i18n }, file = v, name = sname })
+			else
+				stead.table.insert(banks, { title = name, file = v, name = sname })
+			end
+			f:close();
 		end
 	end
-	if #ll == 0 then return end
-	nr_level = ll[rnd(#ll)]
-	level_load()
-	level_reset(false, true)
-	level_after = title_enter
-	history_load()
-	demo_mode = true
-	title_mode = false
+	for k,v in ipairs(banks) do
+		local title = v.title
+		if v.title_i18n and v.title_i18n[LANG] then
+			title = v.title_i18n[LANG]
+		end
+		v.spr = sprite.text(fn2, title, '#ff0000', 1)
+		v.sw, v.sh = sprite.size(v.spr)
+	end
+	nr_bank = 1
 end
 
 game.timer = function(s)
+	local rc
 	check_fingers()
-	if title_mode then
-		title_time = title_time + 1
-		if title_time > 300 then
-			title_time = 0
-			demo_enter()
-			return
-		end
-		if title_mode ~= true then
-			title_mode = title_mode - 32
-			if title_mode < 32 then title_mode = 32 end
-			title_render(sprite.screen(), 0, title_mode);
-		end
-		if title_mode == 32 then
-			title_mode = true
-			local s
-			if total_score and total_score > 0 then
-				s = sprite.text(tfn, stead.string.format(_("score:SCORE").." %d", total_score), '#00ff00', 1)
-				local w, h = sprite.size(s)
-				sprite.draw(s, sprite.screen(), scr_w - w - 2, 2);
-				sprite.free(s)
-			end
-
-			local s = sprite.text(tfn, stead.string.format(_("version:Version").." 1.1"), '#0000ff', 1)
-			local w, h = sprite.size(s)
-
-			sprite.draw(s, sprite.screen(), 2, 2);
-			sprite.free(s)
-
-		end 
-		if title_mode == true and is_anykey() then
-			key_empty()
-			title_mode = false
-			nr_level = selected_level
-			level_choose()
-			sound.play(sounds[SPHASER], 3)
-			return
-		end
-		local w,h = sprite.size(press_any_key)
-		if title_mode == true then
-			sprite.fill(sprite.screen(), 
-				(scr_w - w) / 2, scr_h - h * 2, w, h, 'black');
-			if stead.math.floor(title_time / 10) % 2 ~= 0 then
-				sprite.draw(press_any_key, sprite.screen(), 
-					(scr_w - w) / 2, scr_h - h * 2);
-			end
-		end
-		return
+	if menu_mode then
+		rc = _G['menu_'..menu_mode..'_mode']()
 	end
-
 	if is_esc() then
 		title_enter()
 		return
 	end
-	if level_in then
-		local bw,bh = sprite.size(banner)
-		if level_in < 0 then level_in = 0 end
-		sprite.copy(banner, sprite.screen(), 0, level_in - bh)
-		level_render(sprite.screen(), level_in)
-		if level_in == 0 then
-			level_ready()
-			return
-		end
-		level_in = level_in - 8
-		return
+	if not rc then
+		game_loop()
 	end
-	if level_out then
-		local bw,bh = sprite.size(banner)
-
-		if level_out >= scr_h + bh then level_out = scr_h + bh end
-		sprite.fill(sprite.screen(), 0, level_out - 8 - bh, scr_h, level_out, 'black')
-		sprite.copy(banner, sprite.screen(), 0, level_out - bh);
-		sprite.copy(offscreen, sprite.screen(), 0, level_out)
-		if level_out == scr_h + bh then
-			level_movein()
-			return
-		end
-		level_out = level_out + 8
-		return
-	end
-	if level_select then
-		if level_select ~= true then -- scroll
-			sprite.copy(offscreen, sprite.screen(), level_select, 0)
-			if level_select < 0 then
-				sprite.fill(sprite.screen(), level_select + scr_w, 0, MAP_SPEED, scr_h, 'black')
-				level_map(sprite.screen(), scr_w + level_select, (scr_h - 256) / 2)
-				sprite.fill(sprite.screen(), scr_w + level_select + 256, 0, MAP_SPEED, scr_h, 'black')
-				level_select = level_select - MAP_SPEED
-			else
-				sprite.fill(sprite.screen(), level_select, 0, MAP_SPEED, scr_h, 'black')
-				level_map(sprite.screen(), level_select - 256, (scr_h - 256) / 2)
-				sprite.fill(sprite.screen(), level_select - 256 - MAP_SPEED, 0, MAP_SPEED, scr_h, 'black')
-				level_select = level_select + MAP_SPEED
-			end
-
-			if level_select < -384 or level_select > 400 then
-				level_choose()
-				level_select = true
-			end
-		end
-		if level_select == true then
-			select_time = select_time + 1
-			if select_time >= 1000 then select_time = 0 end
-			local w,h = sprite.size(press_enter)
-			sprite.fill(sprite.screen(), (scr_w - w) / 2, scr_h - h * 2, w, h, 'black');
-
-			if stead.math.floor(select_time / 10) % 2 ~= 0 then
-				sprite.draw(press_enter, sprite.screen(), 
-					(scr_w - w) / 2, scr_h - h * 2);
-			end
-			if is_key 'down' and nr_level < nr_levels - 1 then
-				nr_level = nr_level + 10
-				if nr_level >= nr_levels then
-					nr_level = nr_levels - 1
-				end
-				selected_level = nr_level
-				level_select = -MAP_SPEED
-				level_load()
-			elseif is_key 'right' and nr_level < nr_levels - 1 then
-				nr_level = nr_level + 1
-				selected_level = nr_level
-				level_select = -MAP_SPEED
-				level_load()
-			elseif is_key 'up' and nr_level > 0 then
-				nr_level = nr_level - 10
-				if nr_level < 0 then
-					nr_level = 0
-				end
-				selected_level = nr_level
-				level_select = MAP_SPEED
-				level_load()
-			elseif is_key 'left' and nr_level > 0 then
-				nr_level = nr_level - 1
-				selected_level = nr_level
-				level_select = MAP_SPEED
-				level_load()
-			elseif is_return() then
-				selected_level = nr_level
-				sprite.fill(sprite.screen(), 'black')
-				stop_music();
-				level_load()
-				level_movein()
-				return
-			elseif is_demo() and history_check(nr_level) then
-				sprite.fill(sprite.screen(), 'black')
-				level_load()
-				history_load()
-				level_movein()
-				level_after = level_choose
-				demo_mode = true
-				return
-			end
-		end
-		return
-	end
-	game_loop()
 end
 
 pos2cell = function(x, y)
@@ -728,6 +494,7 @@ human_gold = function(x, y)
 	nr_score = nr_score + 1
 	return human_move(x, y)
 end
+
 human_move = function(x, y)
 	sprite_draw(player_x, player_y, BEMPTY)
 	if player_movex ~= 0 or player_movey ~= 0 then
@@ -779,6 +546,7 @@ game_dispatch = function(c, x, y)
 	end
 	return fn(x, y)
 end
+
 check_scatter = function(cc, x, y, d)
 	if d == 1 and x == 30 then
 		return false
@@ -867,7 +635,19 @@ explode = function(x, y)
 end
 
 level_stat = function()
-	local st = prefs.stat[nr_level]
+	local st = prefs.stat
+	local nam = banks[nr_bank].name
+	if nam ~= 'maps' then
+		if not prefs.maps_stat then
+			prefs.maps_stat = {}
+		end
+		st = prefs.maps_stat[nam]
+		if not st then
+			prefs.maps_stat[nam] = {}
+		end
+		st = prefs.maps_stat[nam]
+	end
+	st = st[nr_level]
 	if not st then
 		prefs.stat[nr_level] = { }
 		st = prefs.stat[nr_level]
@@ -1158,11 +938,19 @@ enemy = function()
 	end
 end
 
+history_name = function(nr)
+	local n = banks[nr_bank].name
+	if n == 'maps' then
+		return "demo"
+	end
+	return "demo-"..n.."-"
+end
+
 history_check = function(nr)
-	local p = instead_gamepath().."/demo"..tostring(nr + 1)
+	local p = instead_gamepath().."/"..history_name()..tostring(nr + 1)
 	local f = io.open(p, "r")
 	if not f then
-		p = instead_savepath().."/demo"..tostring(nr + 1)
+		p = instead_savepath().."/"..history_name()..tostring(nr + 1)
 		f = io.open(p, "r")
 	end
 	if not f then
@@ -1173,10 +961,10 @@ history_check = function(nr)
 end
 
 history_load = function()
-	local p = instead_gamepath().."/demo"..tostring(nr_level + 1)
+	local p = instead_gamepath().."/"..history_name()..tostring(nr_level + 1)
 	local f = io.open(p, "r")
 	if not f then
-		p = instead_savepath().."/demo"..tostring(nr_level + 1)
+		p = instead_savepath().."/"..history_name()..tostring(nr_level + 1)
 		f = io.open(p, "r")
 	end
 	if not f then
@@ -1196,7 +984,7 @@ history_load = function()
 end
 
 history_store = function(n)
-	local p = instead_savepath().."/demo"..tostring(n + 1)
+	local p = instead_savepath().."/"..history_name()..tostring(n + 1)
 	local f = io.open(p, "w")
 	local k,v
 	for k,v in ipairs(history) do
@@ -1295,11 +1083,11 @@ game_loop = function()
 		cell_set(x, y, BHUMAN)
 		player_x, player_y = x, y
 	end
-	if level_out or title_mode or level_select then
+	if menu_mode then
 		return
 	end
 	fall();
-	if level_out or title_mode or level_select then
+	if menu_mode then
 		return
 	end
 	enemy();
@@ -1309,309 +1097,38 @@ game_loop = function()
 	end
 
 end
-title = {
-"     :   : ::: :  : ::: ::      ",
-"     :: ::  :  :: : :   : :     ",
-"     : : :  :  : :: ::  ::      ",
-"     :   :  :  :  : :   : :     ",
-"     :   : ::: :  : ::: : :     ",
-"                                ",
-"     ####   ###  ##   ####      ",
-"     ## ## ## ## ##   ## ##     ",
-"     ####  ## ## ##   ## ##     ",
-"     ## ## ## ## ##   ## ##     ",
-"     ####   ###  #### ####      ",
-};
-title_text = {
-"                                    ИНСТРУКЦИЯ:",
-"    Ваша задача: собрать все алмазы в лабиринте и перейти",
-"в следующий.",
-"    Попадаться в руки бабочкам и минам, а также оказаться",
-"под падающим камнем или алмазом опасно для жизни.",
-"    Ваших сил хватит для толкания камней в любом",
-"направлении. Остальное поймете сами по ходу игры.",
-" ",
-"    Программа была написана А. В. Меленьтевым в 1989 г.",
-"для БК-0010. Оформлять игру помог Н. Валтер.",
-"    Порт игры под INSTEAD выполнен П. А. Косых в 2015 г.",
-}
-
-title_text_en = {
-"                                    INSTRUCTIONS:",
-" ",
-"    Your mission: got all jewels on the level. Avoid butterfiles",
-" mines and falling stones.",
-"    You are strong enougth to move stones in any direction.",
-"    Good luck!",
-" ",
-"    Original code was written by A. V. Melentiev in 1989.",
-"for BK-0010 computers. N. Walter helped him.",
-"    Ported to INSTEAD by P.A. Kosyh in 2015.",
-}
-happy_end_map = 
-
-{
-"::::::::::::::::",
-"               $",
-"                ",
-"                ",
-"                ",
-"+      @@       ",
-"::::::::::::::::",
-"%              &",
-"                ",
-"                ",
-"                ",
-"                ",
-"                ",
-"                ",
-"                ",
-"                ",
-}
-
-happy_end_text = {
-"Поздравляю!",
-"Вы прошли эту непростую игру!",
-" ",
-"Надеюсь, она понравилась вам также",
-"как и мне 25 лет назад...",
-" ",
-"Кстати, вы можете смотреть записанные",
-"демонстрации, нажав на клавишу D",
-"из режима выбора уровня",
-"или прямо во время игры",
-" ",
-"Вы можете посмотреть",
-"другие INSTEAD игры по адресу:",
-"http://instead.syscall.ru",
-" ",
-"Выражаю благодарность и признательность:",
-" ",
-"Жене и детям",
-"за понимание",
-" ",
-"А. В. Мелентьеву и Н. Валтеру",
-"за Bolder Dash для БК-0010",
-" ",
-"Леониду Брухису",
-"За эмулятор БК-0010 для Unix",
-" ",
-"Всем разработчикам БК-0010",
-" ",
-"Без всех этих людей",
-"ремейк игры был бы невозможен...",
-" ",
-" ",
-"В игре использованы треки:",
-" ",
-"Chip never dies от ajaxlemon",
-"IBM 486 66Mhz от ExcelioN",
-" ",
-" ",
-" ",
-" ",
-"КОНЕЦ",
-" ",
-" ",
-" ",
-" ",
-"                   Косых Петр 2015",
-}
-
-happy_end_text_en = {
-"Congratulations!",
-"You win!",
-" ",
-"I hope you like this small game",
-"It was written 25 years ago...",
-" ",
-"Btw, you may run demo of any level",
-"Just press D key from map selection",
-"menu or just in game",
-" ",
-"Visit http://instead.syscall.ru",
-"for other INSTEAD games",
-" ",
-"Thanks to:",
-" ",
-"My wife and childrens",
-" ",
-"A. V. Melentiev and N. Walter",
-"for they Bolder Dash game",
-" ",
-"Leonid A. Broukhis",
-"for БК-0010 emulator",
-" ",
-"And all BK-0010 developers!",
-" ",
-"Thank you for playing this game!",
-" ",
-" ",
-"Music:",
-" ",
-"Chip never dies by ajaxlemon",
-"IBM 486 66Mhz by ExcelioN",
-" ",
-" ",
-" ",
-" ",
-"THE END",
-" ",
-" ",
-" ",
-" ",
-"                   Peter Kosyh 2015",
-}
-happy_end_spr = {}
-happy_end_render = function()
-	if not happy_end_off then
-		happy_end_off = 0
-	end
-	local off = happy_end_off
-	local het = happy_end_text
-	if LANG ~= 'ru' then
-		het = happy_end_text_en
-	end
-	local k,v 
-	local fh = sprite.font_height(tfn)
-	local off2 = off
-	local bh = scr_h / 2
-	local delta = bh - off
-	local start = 1
-	local start_y = scr_h
-	if not happy_end_spr_w then
-		happy_end_spr_w = 0
-		happy_end_spr_h = 0
-		for k,v in ipairs(het) do
-			local w,h = sprite.text_size(tfn, v)
-			if w > happy_end_spr_w then
-				happy_end_spr_w = w
-			end
-			happy_end_spr_h = happy_end_spr_h + h
-		end
-	end
-	if delta < 0 then
-		for k,v in ipairs(het) do
-			if delta + fh >= 0 then
-				start = k
-				start_y = delta
-				break
-			end
-			if happy_end_spr[k] then
-				sprite.free(happy_end_spr[k])
-				happy_end_spr[k] = nil
-			end
-			delta = delta + fh
-		end
-	else
-		start_y = delta
-	end
---prite.fill(sprite.screen(), (scr_w - happy_end_spr_w)/2, scr_h /2, happy_end_spr_w, scr_h / 2, "black")
-	local ox = (scr_w - happy_end_spr_w)/2
-	for k = start, #het do
-		v = het[k]
-		if not happy_end_spr[k] then
-			happy_end_spr[k] = sprite.text(tfn, v, '#ff0000', 1)
-		end
-	local w, h = sprite.size(happy_end_spr[k])
-		if delta < 0 and k == start then
-			sprite.draw(happy_end_spr[k], 0, -delta, w, h + delta, sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h /2 + start_y - delta)
-		else
-			sprite.draw(happy_end_spr[k], sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h/2 + start_y)
-		end
-		start_y = start_y + fh
-		if start_y >= scr_h then
-			break
-		end
-	end
-	happy_end_off = happy_end_off + 2
-	if happy_end_off > (happy_end_spr_h + bh)  then
-		happy_end_off = 0
-	end
-end
-
-title_render = function(where, ox, oy)
-	local char2map = {
-		[' '] = 0,
-		[':'] = 1,
-		['@'] = 2,
-		['$'] = 3,
-		['+'] = 4,
-		['#'] = 5,
-		['&'] = 6,
-		['%'] = 7,
-	}
-	local x
-	local y
-	for y = 1, #title do
-		for x = 1, 32 do
-			local c = string.sub(title[y], x, x);
-			c = char2map[c]
-			sprite.copy(sprites_small[c + 1], where, 
-				ox + (x - 1) * 16, oy + (y - 1) * 16);
-		end
-	end
-	sprite.fill(where, 0, oy + #title * 16, 512, 32, 'black');
-	sprite.fill(where, 0, oy - 32, 512, 32, 'black');
-	local k,v
-	if not title_tspr then
-		tspr_width = 0
-		title_tspr = {}
-		local t = title_text_en
-		if LANG == "ru" then
-			t = title_text
-		end
-		for k,v in ipairs(t) do
-			title_tspr[k] = sprite.text(tfn, v, '#00ff00', 1)
-			local w, h = sprite.size(title_tspr[k])
-			if w > tspr_width then tspr_width = w end
-		end
-	end
-	local dh = #title * 16 + 16
-	local fh = sprite.font_height(tfn)
-	fh = fh + stead.math.floor(fh / 3)
-	for k, v in ipairs(title_tspr) do
-		sprite.fill(where, ox, oy + dh + (k - 1) * fh, scr_w, h, 'black')
-	end
-	local dy
-	for k, v in ipairs(title_tspr) do
-		local w, h = sprite.size(v)
-		dy = oy + dh + (k - 1) * fh
-		sprite.draw(v, where, ox + (scr_w - tspr_width) / 2, dy)
-	end
-	sprite.fill(where, 0, dy + fh, scr_w, 32, 'black')
-end
-
-title_enter = function()
-	set_music('snd/chipneve.xm')
-	title_time = 0
-	title_mode = scr_h
-	timer:set(FAST_TIMER)
-	level_in, level_out, level_select = false, false, false
-	demo_mode = false
---	sound.stop(-1)
-	sound.play(sounds[STRILL], 3)
-	level_after = false
-	key_empty()
-	local k,v
-
-	local score = 0
-
-	for k,v in pairs(prefs.stat) do
-		if v.score then
-			score = score + v.score
-		end
-	end
-	total_score = score
-end
 
 orig_save = game.save
 game.save = function(s, ...)
 	if demo_mode then
 		return
 	end
+	_G["_selected_level_"..banks[nr_bank].name] = selected_level -- old selection
 	return orig_save(s, ...)
 end
+global { nr_bank = 1 };
+
+function bank_load()
+	if nr_bank > #banks then
+		nr_bank = 1
+	end
+	dofile (banks[nr_bank].file)
+	nr_levels = #maps / 16
+	print (nr_levels.." level(s) loaded...");
+	local k,v 
+	for k,v in ipairs(happy_end_map) do
+		stead.table.insert(maps, v)
+	end
+	if not _G["_selected_level_"..banks[nr_bank].name] then
+		_G["_selected_level_"..banks[nr_bank].name] = 0
+	end
+	nr_level = _G["_selected_level_"..banks[nr_bank].name]
+	if nr_level >= nr_levels then
+		nr_level = 0
+	end
+	selected_level = nr_level -- new selection
+end
+
 init = function()
 	set_music_fading(500, 500)
 	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd', 'escape');
@@ -1621,24 +1138,21 @@ init = function()
 	banner = sprite.blank(scr_w, 32)
 	sprite.fill(sprite.screen(), 'black');
 	level_select = true
-	local k,v 
-	for k,v in ipairs(happy_end_map) do
-		stead.table.insert(maps, v)
-	end
+	banks_init();
 end
+
 start = function()
-	if not level_select and not title_mode then
+	bank_load()
+	if menu_mode ~= 'level_select' and menu_mode ~= 'title' and not demo_mode and menu_mode ~= 'bank_select' then
 		level_load()
 		level_movein()
 	else
 		title_enter()
 	end
 end
-dofile "i18n.lua"
-dofile "maps.lua"
-nr_levels = #maps / 16
 
-print (nr_levels.." level(s) loaded...");
+dofile "i18n.lua"
+dofile "menu.lua"
 
 main.nam = '!!!';
 main.dsc = function(s)
