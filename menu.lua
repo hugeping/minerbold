@@ -572,10 +572,11 @@ happy_end_render = function()
 	local ox = (scr_w - happy_end_spr_w)/2
 	for k = start, #het do
 		v = het[k]
+		if v == '' then v = ' ' end
 		if not happy_end_spr[k] then
 			happy_end_spr[k] = sprite.text(tfn, v, '#ff0000', 1)
 		end
-	local w, h = sprite.size(happy_end_spr[k])
+		local w, h = sprite.size(happy_end_spr[k])
 		if delta < 0 and k == start then
 			sprite.draw(happy_end_spr[k], 0, -delta, w, h + delta, sprite.screen(), ox + (happy_end_spr_w - w)/2, scr_h /2 + start_y - delta)
 		else
