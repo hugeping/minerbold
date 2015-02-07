@@ -756,9 +756,9 @@ fall = function()
 			-- lookup first undone
 			local i
 			for i=0,nr_levels - 1 do
-				if (not prefs.stat[i] or 
-				    not prefs.stat[i].completed or 
-				    prefs.stat[i].completed == 0) then
+				if (not bank_stat()[i] or 
+				    not bank_stat()[i].completed or 
+				    bank_stat()[i].completed == 0) then
 					nr_level = i
 					break
 				end
