@@ -1087,6 +1087,8 @@ game_loop = function()
 		local c = cell_get(x, y)
 		if c == BHUMAN then
 			cell_set(x, y, BEMPTY)
+		elseif c == BGOLD or c == BSTONE then -- fix of the original game
+			sprite_draw(x, y, c)
 		end
 		x, y =  player_x + player_movex, player_y + player_movey 
 		c = cell_get(x, y)
