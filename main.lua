@@ -10,6 +10,7 @@ require "sprites"
 require "sound"
 require "timer"
 require "kbd"
+require "click"
 
 -- require "prefs"
 
@@ -271,8 +272,6 @@ if stead.finger_pos then
 	end
 end
 
-require "click"
-
 function check_fingers()
 	if not use_fingers then
 		return
@@ -324,15 +323,33 @@ function check_fingers()
 end
 
 click_history = { {0,0}, {0,0}, {0,0}, {0,0} }
+cell_edit = function(x, y)
+	local c = cell_get(x, y)
+	if c == edit_c then
+		edit_c = c + 1
+	else
+		edit_c = edit_c or c
+	end
+	if edit_c > 7 then 
+		edit_c = 0
+	end
+	cell_set(x, y, edit_c)
+end
 game.click = function(s, x, y, a, b)
-	local nx = math.floor(x / 32) * 2;
-	local ny = math.floor(y / 32) * 2;
+	local nx = math.floor(x / 128);
+	local ny = math.floor(y / 128);
+
+	if nx < 0 or ny < 0 or nx > 3 or ny > 3 then 
+		return 
+	end
+
 	stead.table.insert(click_history, { nx, ny });
 
 	if #click_history > 4 then
 		stead.table.remove(click_history, 1)
 	end
-	local emap = { {0, 0}, {30, 0}, {30, 30}, { 0, 30}};
+
+	local emap = { {0, 0}, {3, 0}, {3, 3}, { 0, 3} };
 	local k, v
 	local miss = false
 	for k, v in ipairs(emap) do
@@ -341,7 +358,7 @@ game.click = function(s, x, y, a, b)
 			miss = true
 		end
 	end
-	if not miss and not menu_mode then
+	if not miss then
 		key_edit = true
 		return
 	end
@@ -349,10 +366,7 @@ game.click = function(s, x, y, a, b)
 		local nx = math.floor(x / 32) * 2;
 		local ny = math.floor(y / 32) * 2;
 		if nx == player_x and ny == player_y then
-			local c = cell_get(player_x, player_y)
-			c = c + 1
-			if c > 7 then c = 0 end
-			cell_set(player_x, player_y, c)
+			cell_edit(player_x, player_y)
 		else
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_x, player_y = nx, ny
@@ -1172,10 +1186,7 @@ game_loop = function()
 			edit_blink = false
 		elseif is_return() then
 			edit_blink = true
-			local c = cell_get(player_x, player_y)
-			c = c + 1
-			if c > 7 then c = 0 end
-			cell_set(player_x, player_y, c)
+			cell_edit(player_x, player_y);
 		elseif key_num then
 			c = tonumber(key_num)
 			cell_set(player_x, player_y, c)
@@ -1295,9 +1306,11 @@ function bank_save()
 	end
 	f:write(string.format("--$Name:%s\n", banks[nr_bank].title));
 	local k,v
-	for k, v in pairs(banks[nr_bank].title_i18n) do
-		f:write(string.format("--$Name(%s):%s\n", 
-			k, v));
+	if banks[nr_bank].title_i18n then
+		for k, v in pairs(banks[nr_bank].title_i18n) do
+			f:write(string.format("--$Name(%s):%s\n", 
+				k, v));
+		end
 	end
 	f:write(string.format("maps = {\n"))
 	for k = 1, nr_levels do
