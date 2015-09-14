@@ -24,6 +24,7 @@ level_reset = function(win, notitle)
 		end
 	end
 	demo_mode = false
+	edit_mode = false
 	nr_score = 0;
 	sprite.fill(banner, 'black')
 	if bant then
@@ -363,6 +364,12 @@ function menu_level_select_mode()
 			level_after = level_choose
 			demo_mode = true
 			return true
+		elseif is_edit() then
+			sprite.fill(sprite.screen(), 'black')
+			level_load()
+			level_movein()
+			edit_mode = true
+			return true
 		end
 	end
 	return true
@@ -649,6 +656,7 @@ title_enter = function()
 	set_music('snd/chipneve.xm')
 	menu_select('title', scr_h)
 	demo_mode = false
+	edit_mode = false
 	title_time = 0
 	timer:set(FAST_TIMER)
 --	sound.stop(-1)

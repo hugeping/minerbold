@@ -111,6 +111,30 @@ global {
 	enemies = {};
 }
 
+level_store = function()
+	local map2char = {
+		[0] = ' ',
+		[1] = ':',
+		[2] = '@',
+		[3] = '$',
+		[4] = '+',
+		[5] = '#',
+		[6] = '&',
+		[7] = '%',
+	}
+	local x
+	local y
+	for y = 0, 15 do
+		local line = ''
+		for x = 0, 15 do
+			local c = cell_get(x * 2, y * 2)
+			c = map2char[c];
+			line = line .. c;
+		end
+		maps[nr_level * 16 + y + 1] = line
+	end
+end
+
 level_load = function()
 	enemies = {};
 	history = {}
@@ -129,14 +153,19 @@ level_load = function()
 	local line = nr_level * 16
 	local x
 	local y
+	local was_human
 	for y = 1, 16 do
 		map[y] = {}
 		local row = maps[line + y]
 		for x = 1, 16 do
 			local c = string.sub(row, x, x);
 			c = char2map[c]
+			if c == BHUMAN and was_human then
+				c = BEMPTY
+			end
 			map[y][x] = c
 			if c == BHUMAN then
+				was_human = true
 				player_x = (x - 1) * 2
 				player_y = (y - 1) * 2
 				player_movex = 0;
@@ -145,6 +174,13 @@ level_load = function()
 				stead.table.insert(enemies, { x = (x - 1) * 2, y = (y - 1) * 2, dx = 0, dy = 0 })
 			end
 		end
+	end
+	if not was_human then
+		player_x = 0
+		player_y = 0
+		player_movex = 0;
+		player_movey = 0;
+		map[1][1] = BHUMAN
 	end
 end
 
@@ -186,7 +222,7 @@ keys = {}
 key_empty = function()
 	fingers = {}
 	keys = {}
-	key_any, key_esc, key_demo, key_return = false, false, false, false
+	key_any, key_esc, key_demo, key_return, key_edit = false, false, false, false, false
 end
 
 fingers = {}
@@ -234,6 +270,8 @@ if stead.finger_pos then
 		end
 	end
 end
+
+require "click"
 
 function check_fingers()
 	if not use_fingers then
@@ -285,6 +323,43 @@ function check_fingers()
 	end
 end
 
+click_history = { {0,0}, {0,0}, {0,0}, {0,0} }
+game.click = function(s, x, y, a, b)
+	local nx = math.floor(x / 32) * 2;
+	local ny = math.floor(y / 32) * 2;
+	stead.table.insert(click_history, { nx, ny });
+
+	if #click_history > 4 then
+		stead.table.remove(click_history, 1)
+	end
+	local emap = { {0, 0}, {30, 0}, {30, 30}, { 0, 30}};
+	local k, v
+	local miss = false
+	for k, v in ipairs(emap) do
+		if v[1] ~= click_history[k][1] or
+			v[2] ~= click_history[k][2] then
+			miss = true
+		end
+	end
+	if not miss and not menu_mode then
+		key_edit = true
+		return
+	end
+	if edit_mode and not menu_mode then
+		local nx = math.floor(x / 32) * 2;
+		local ny = math.floor(y / 32) * 2;
+		if nx == player_x and ny == player_y then
+			local c = cell_get(player_x, player_y)
+			c = c + 1
+			if c > 7 then c = 0 end
+			cell_set(player_x, player_y, c)
+		else
+			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
+			player_x, player_y = nx, ny
+		end
+	end
+end
+
 game.kbd = function(s, down, key)
 	if key == 'space' or key == 'return' then
 		key_return = down
@@ -301,6 +376,16 @@ game.kbd = function(s, down, key)
 
 	if key == 'd' then
 		key_demo = down
+		return
+	end
+
+	if key == 'e' then
+		key_edit = down
+		return
+	end
+
+	if key >= '0' and key <= '7' then
+		key_num = down and key
 		return
 	end
 
@@ -463,6 +548,13 @@ end)
 
 is_demo = function()
 	if key_demo then
+		return true
+	end
+end
+
+is_edit = function()
+	if key_edit then
+		key_edit = false
 		return true
 	end
 end
@@ -1048,7 +1140,58 @@ game_loop = function()
 		level_reset()
 		return
 	end
+	if is_edit() then
+		local new_mode = not edit_mode
+		if edit_mode then
+			level_store()
+			bank_save()
+		end
+		level_load()
+		level_reset()
+		edit_mode = new_mode
+		return
+	end
 
+	if edit_mode then
+		edit_blink = not edit_blink
+		if is_key 'up' then
+			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
+			player_y = player_y - 2
+			edit_blink = false
+		elseif is_key 'down' then
+			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
+			player_y = player_y + 2
+			edit_blink = false
+		elseif is_key 'left' then
+			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
+			player_x = player_x - 2
+			edit_blink = false
+		elseif is_key 'right' then
+			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
+			player_x = player_x + 2
+			edit_blink = false
+		elseif is_return() then
+			edit_blink = true
+			local c = cell_get(player_x, player_y)
+			c = c + 1
+			if c > 7 then c = 0 end
+			cell_set(player_x, player_y, c)
+		elseif key_num then
+			c = tonumber(key_num)
+			cell_set(player_x, player_y, c)
+		end
+		if player_x < 0 then player_x = 0 end
+		if player_x > 30 then player_x = 30 end
+		if player_y < 0 then player_y = 0 end
+		if player_y > 30 then player_y = 30 end
+
+		if not edit_blink then
+			sprite.fill(sprite.screen(), player_x * 16, player_y * 16, 32, 32, "white");
+		else
+			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
+		end
+		return
+	end
 	if nr_level == nr_levels and happy_end_spr_w then
 		sprite.fill(sprite.screen(), (scr_w - happy_end_spr_w)/2, scr_h /2, happy_end_spr_w, scr_h / 2, "black")
 	end
@@ -1142,9 +1285,35 @@ function bank_load()
 	selected_level = nr_level -- new selection
 end
 
+function bank_save()
+	if nr_bank > #banks then
+		return
+	end
+	local f = io.open(banks[nr_bank].file, "w")
+	if not f then
+		return
+	end
+	f:write(string.format("--$Name:%s\n", banks[nr_bank].title));
+	local k,v
+	for k, v in pairs(banks[nr_bank].title_i18n) do
+		f:write(string.format("--$Name(%s):%s\n", 
+			k, v));
+	end
+	f:write(string.format("maps = {\n"))
+	for k = 1, nr_levels do
+		f:write(string.format("-- %d\n", k - 1));
+		local n
+		for n=1,16 do
+			f:write(string.format('"%s",\n', maps[(k - 1) * 16 + n]))
+		end
+	end
+	f:write(string.format("};\n"))
+	f:close()
+end
+
 init = function()
 	set_music_fading(500, 500)
-	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd', 'escape');
+	hook_keys('left', 'right', 'up', 'down', 'space', 'return', 'd', 'escape', 'e', '0', '1', '2', '3', '4', '5', '6', '7');
 	load_sprites()
 	load_sounds()
 	offscreen = sprite.blank(scr_w, scr_h)
