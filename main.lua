@@ -250,8 +250,7 @@ if stead.finger_pos then
 		end
 
 		use_fingers = true
-
-		if press and x > scr_w / 3 and x < scr_w * 2 / 3 then
+		if press and x > scr_w / 3 and x < scr_w * 2 / 3 and not edit_mode then
 			key_return = press
 			key_any = press
 		end
@@ -370,6 +369,7 @@ game.click = function(s, x, y, a, b)
 		else
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_x, player_y = nx, ny
+			cell_edit(player_x, player_y)
 		end
 	end
 end
