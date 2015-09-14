@@ -369,7 +369,6 @@ game.click = function(s, x, y, a, b)
 		else
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_x, player_y = nx, ny
-			cell_edit(player_x, player_y)
 		end
 	end
 end
