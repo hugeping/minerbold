@@ -229,28 +229,42 @@ end
 fingers = {}
 touch_stamp = 0;
 touch_num = 0
-
+touch_max = 0
 if stead.finger_pos then
 	require "finger"
 	game.finger = function(s, press, fid, x, y)
+		use_fingers = true
 		if press then
 			if stead.ticks() - touch_stamp > 200 then
 				touch_num = 0
 				touch_stamp = stead.ticks()
 			end
 			touch_num = touch_num + 1
+			touch_max = #finger:list()
 		else
+			local tm = touch_max
 			touch_num = 0
 			touch_stamp = 0
+			touch_max = 0
+			if tm >=4 and edit_mode then
+				local x, y
+				for y=0, 15 do
+					for x=0, 15 do
+						sprite_draw(x * 2, y * 2, BEMPTY);
+						cell_set(x * 2, y * 2, BEMPTY);
+					end
+				end
+				return
+			elseif tm >= 3 then
+				key_edit = true
+				return
+			end
 		end
-		
 		if touch_num >= 3 then
 			key_esc = true
 			return
 		end
-
-		use_fingers = true
-		if press and x > scr_w / 3 and x < scr_w * 2 / 3 and not edit_mode then
+		if press and x > scr_w / 3 and x < scr_w * 2 / 3 and not edit_mode and touch_max == 1 then
 			key_return = press
 			key_any = press
 		end
@@ -322,9 +336,9 @@ function check_fingers()
 end
 
 click_history = { {0,0}, {0,0}, {0,0}, {0,0} }
-cell_edit = function(x, y)
+cell_edit = function(x, y, a)
 	local c = cell_get(x, y)
-	if c == edit_c then
+	if c == edit_c and not a then
 		edit_c = c + 1
 	else
 		edit_c = edit_c or c
@@ -334,33 +348,8 @@ cell_edit = function(x, y)
 	end
 	cell_set(x, y, edit_c)
 end
+
 game.click = function(s, x, y, a, b)
-	local nx = math.floor(x / 128);
-	local ny = math.floor(y / 128);
-
-	if nx < 0 or ny < 0 or nx > 3 or ny > 3 then 
-		return 
-	end
-
-	stead.table.insert(click_history, { nx, ny });
-
-	if #click_history > 4 then
-		stead.table.remove(click_history, 1)
-	end
-
-	local emap = { {0, 0}, {3, 0}, {3, 3}, { 0, 3} };
-	local k, v
-	local miss = false
-	for k, v in ipairs(emap) do
-		if v[1] ~= click_history[k][1] or
-			v[2] ~= click_history[k][2] then
-			miss = true
-		end
-	end
-	if not miss then
-		key_edit = true
-		return
-	end
 	if edit_mode and not menu_mode then
 		local nx = math.floor(x / 32) * 2;
 		local ny = math.floor(y / 32) * 2;
@@ -369,6 +358,7 @@ game.click = function(s, x, y, a, b)
 		else
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_x, player_y = nx, ny
+--			cell_edit(player_x, player_y);
 		end
 	end
 end
@@ -1164,36 +1154,46 @@ game_loop = function()
 		edit_mode = new_mode
 		return
 	end
-
 	if edit_mode then
 		edit_blink = not edit_blink
+		local active_edit = false
 		if is_key 'up' then
+			active_edit = touch_max >= 1
+			if acive_edit then cell_edit(player_x, player_y, active_edit); end
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_y = player_y - 2
 			edit_blink = false
 		elseif is_key 'down' then
+			active_edit = touch_max >= 1
+			if acive_edit then cell_edit(player_x, player_y, active_edit); end
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_y = player_y + 2
 			edit_blink = false
 		elseif is_key 'left' then
+			active_edit = touch_max >= 1
+			if acive_edit then cell_edit(player_x, player_y, active_edit); end
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_x = player_x - 2
 			edit_blink = false
 		elseif is_key 'right' then
+			active_edit = touch_max >= 1
+			if acive_edit then cell_edit(player_x, player_y, active_edit); end
 			sprite_draw(player_x, player_y, cell_get(player_x, player_y));
 			player_x = player_x + 2
 			edit_blink = false
-		elseif is_return() then
-			edit_blink = true
-			cell_edit(player_x, player_y);
-		elseif key_num then
-			c = tonumber(key_num)
-			cell_set(player_x, player_y, c)
 		end
 		if player_x < 0 then player_x = 0 end
 		if player_x > 30 then player_x = 30 end
 		if player_y < 0 then player_y = 0 end
 		if player_y > 30 then player_y = 30 end
+
+		if is_return() or active_edit then
+			edit_blink = true
+			cell_edit(player_x, player_y, active_edit);
+		elseif key_num then
+			c = tonumber(key_num)
+			cell_set(player_x, player_y, c)
+		end
 
 		if not edit_blink then
 			sprite.fill(sprite.screen(), player_x * 16, player_y * 16, 32, 32, "white");
