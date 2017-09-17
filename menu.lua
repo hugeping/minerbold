@@ -166,7 +166,7 @@ function menu_title_mode()
 			sprite.free(s)
 		end
 
-		local s = sprite.text(tfn, stead.string.format(_("version:Version").." 1.3"), '#0000ff', 1)
+		local s = sprite.text(tfn, stead.string.format(_("version:Version").." 1.4"), '#0000ff', 1)
 		local w, h = sprite.size(s)
 
 		sprite.draw(s, sprite.screen(), 2, 2);

@@ -1,5 +1,5 @@
 --$Name:Miner Bold$
---$Version:1.3$
+--$Version:1.4$
 --$Author:Peter Kosyh$
 
 instead_version "2.0.0"
